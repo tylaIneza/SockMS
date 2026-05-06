@@ -1,12 +1,13 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
 import { fmt } from '@/lib/auth';
-import { ShoppingCart, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { ShoppingCart, Trash2, CheckCircle, AlertCircle, Search, X, Package } from 'lucide-react';
 
 interface CartItem {
   product_id: string;
   product_name: string;
+  category_name: string;
   min_selling_price: number;
   available_qty: number;
   quantity: number;
@@ -14,14 +15,18 @@ interface CartItem {
 }
 
 export default function BranchSalesPage() {
-  const [stock, setStock]       = useState<any[]>([]);
-  const [history, setHistory]   = useState<any[]>([]);
-  const [cart, setCart]         = useState<CartItem[]>([]);
-  const [tab, setTab]           = useState<'new' | 'history'>('new');
-  const [saving, setSaving]     = useState(false);
-  const [error, setError]       = useState('');
-  const [success, setSuccess]   = useState('');
-  const [selectedProduct, setSelectedProduct] = useState('');
+  const [stock, setStock]     = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [cart, setCart]       = useState<CartItem[]>([]);
+  const [tab, setTab]         = useState<'new' | 'history'>('new');
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Search state
+  const [query, setQuery]       = useState('');
+  const [dropOpen, setDropOpen] = useState(false);
+  const searchRef               = useRef<HTMLDivElement>(null);
 
   const load = () => {
     api.get('/stock').then(r => setStock(r.data.filter((s: any) => s.quantity > 0)));
@@ -29,45 +34,69 @@ export default function BranchSalesPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const addToCart = () => {
-    if (!selectedProduct) return;
-    const s = stock.find(s => s.product_id === selectedProduct);
-    if (!s) return;
-    if (cart.find(c => c.product_id === selectedProduct)) return;
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setDropOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const searchResults = stock.filter(s =>
+    query.trim() === '' ||
+    s.product_name.toLowerCase().includes(query.toLowerCase()) ||
+    (s.category_name || '').toLowerCase().includes(query.toLowerCase())
+  );
+
+  const addToCart = (s: any) => {
+    if (cart.find(c => c.product_id === s.product_id)) return;
     setCart(prev => [...prev, {
-      product_id: s.product_id,
-      product_name: s.product_name,
+      product_id:        s.product_id,
+      product_name:      s.product_name,
+      category_name:     s.category_name || '',
       min_selling_price: parseFloat(s.min_selling_price),
-      available_qty: s.quantity,
-      quantity: 1,
-      selling_price: String(s.min_selling_price),
+      available_qty:     s.quantity,
+      quantity:          1,
+      selling_price:     String(s.min_selling_price),
     }]);
-    setSelectedProduct('');
+    setQuery('');
+    setDropOpen(false);
+    setSuccess('');
+    setError('');
   };
 
   const updateItem = (id: string, field: 'quantity' | 'selling_price', val: string) => {
-    setCart(prev => prev.map(c => c.product_id === id ? { ...c, [field]: field === 'quantity' ? Math.min(parseInt(val) || 1, c.available_qty) : val } : c));
+    setCart(prev => prev.map(c =>
+      c.product_id === id
+        ? { ...c, [field]: field === 'quantity' ? Math.min(parseInt(val) || 1, c.available_qty) : val }
+        : c
+    ));
   };
 
   const removeItem = (id: string) => setCart(prev => prev.filter(c => c.product_id !== id));
 
-  const cartTotal = cart.reduce((s, c) => s + (parseFloat(c.selling_price) || 0) * c.quantity, 0);
-
+  const cartTotal   = cart.reduce((s, c) => s + (parseFloat(c.selling_price) || 0) * c.quantity, 0);
   const priceErrors = cart.filter(c => parseFloat(c.selling_price) < c.min_selling_price);
 
   const submitSale = async () => {
     if (cart.length === 0) return;
-    if (priceErrors.length > 0) { setError(`Selling price below minimum for: ${priceErrors.map(e => e.product_name).join(', ')}`); return; }
+    if (priceErrors.length > 0) {
+      setError(`Price below minimum for: ${priceErrors.map(e => e.product_name).join(', ')}`);
+      return;
+    }
     setSaving(true); setError(''); setSuccess('');
     try {
       for (const item of cart) {
         await api.post('/sales', {
-          product_id: item.product_id,
-          quantity: item.quantity,
+          product_id:    item.product_id,
+          quantity:      item.quantity,
           selling_price: item.selling_price,
         });
       }
-      setSuccess(`Sale completed! Total: ${fmt(cartTotal)}`);
+      setSuccess(`Sale complete! Total collected: ${fmt(cartTotal)}`);
       setCart([]);
       load();
     } catch (e: any) { setError(e.response?.data?.message || 'Error processing sale'); }
@@ -84,7 +113,8 @@ export default function BranchSalesPage() {
       <div className="flex gap-2 border-b border-gray-200">
         {[{ id: 'new', label: 'New Sale' }, { id: 'history', label: 'Sales History' }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors
+              ${tab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             {t.label}
           </button>
         ))}
@@ -92,29 +122,76 @@ export default function BranchSalesPage() {
 
       {tab === 'new' && (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Product selector */}
           <div className="xl:col-span-2 space-y-4">
-            <div className="flex gap-2">
-              <select className="input flex-1" value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}>
-                <option value="">Select a product to add...</option>
-                {stock.filter(s => !cart.find(c => c.product_id === s.product_id)).map(s => (
-                  <option key={s.product_id} value={s.product_id}>
-                    {s.product_name} — {s.quantity} available
-                  </option>
-                ))}
-              </select>
-              <button onClick={addToCart} disabled={!selectedProduct} className="btn-primary px-4">
-                <Plus className="w-4 h-4" />
-              </button>
+
+            {/* ── Real-time product search ── */}
+            <div ref={searchRef} className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  className="input pl-9 pr-9"
+                  placeholder="Search product by name or category…"
+                  value={query}
+                  onChange={e => { setQuery(e.target.value); setDropOpen(true); }}
+                  onFocus={() => setDropOpen(true)}
+                  autoComplete="off"
+                />
+                {query && (
+                  <button onClick={() => { setQuery(''); setDropOpen(false); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {dropOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 z-20 max-h-72 overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <div className="flex flex-col items-center py-8 text-gray-400">
+                      <Package className="w-8 h-8 mb-2 text-gray-300" />
+                      <p className="text-sm">No products match "{query}"</p>
+                    </div>
+                  ) : (
+                    searchResults.map(s => {
+                      const inCart = !!cart.find(c => c.product_id === s.product_id);
+                      return (
+                        <button
+                          key={s.product_id}
+                          onMouseDown={e => e.preventDefault()} // keep focus on input
+                          onClick={() => !inCart && addToCart(s)}
+                          className={`w-full flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0 text-left transition-colors
+                            ${inCart ? 'opacity-50 cursor-default bg-gray-50' : 'hover:bg-indigo-50 cursor-pointer'}`}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{s.product_name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {s.category_name && <span className="badge-blue">{s.category_name}</span>}
+                              <span className="text-xs text-gray-400">Min: {fmt(s.min_selling_price)}</span>
+                            </div>
+                          </div>
+                          <div className="ml-3 shrink-0 text-right">
+                            {inCart
+                              ? <span className="badge-green">In cart</span>
+                              : <span className={s.quantity <= 10 ? 'badge-yellow' : 'badge-blue'}>{s.quantity} left</span>
+                            }
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
 
             {error   && <div className="bg-red-50 text-red-700 text-sm rounded-xl px-4 py-3 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{error}</div>}
             {success && <div className="bg-green-50 text-green-700 text-sm rounded-xl px-4 py-3 flex items-center gap-2"><CheckCircle className="w-4 h-4 shrink-0" />{success}</div>}
 
+            {/* ── Cart table ── */}
             {cart.length === 0 ? (
-              <div className="card p-10 text-center text-gray-400">
+              <div className="card p-12 text-center text-gray-400">
                 <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-                <p>Add products to start a sale</p>
+                <p className="font-medium">Cart is empty</p>
+                <p className="text-sm mt-1">Search for a product above to add it</p>
               </div>
             ) : (
               <div className="card overflow-hidden">
@@ -123,34 +200,52 @@ export default function BranchSalesPage() {
                     <tr>
                       <th className="th">Product</th>
                       <th className="th text-center w-28">Qty</th>
-                      <th className="th text-right w-40">Selling Price</th>
+                      <th className="th text-right w-44">Selling Price (RWF)</th>
                       <th className="th text-right w-32">Subtotal</th>
-                      <th className="th w-10"></th>
+                      <th className="th w-10" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {cart.map(item => {
                       const belowMin = parseFloat(item.selling_price) < item.min_selling_price;
                       return (
-                        <tr key={item.product_id} className={belowMin ? 'bg-red-50/30' : ''}>
+                        <tr key={item.product_id} className={belowMin ? 'bg-red-50/40' : ''}>
                           <td className="td">
-                            <p className="font-medium">{item.product_name}</p>
-                            <p className="text-xs text-gray-400">Min: {fmt(item.min_selling_price)} · {item.available_qty} in stock</p>
+                            <p className="font-medium text-gray-900">{item.product_name}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              Min: {fmt(item.min_selling_price)} · {item.available_qty} available
+                            </p>
                           </td>
                           <td className="td">
-                            <input type="number" min="1" max={item.available_qty} className={`input text-center w-full ${belowMin ? '' : ''}`}
-                              value={item.quantity} onChange={e => updateItem(item.product_id, 'quantity', e.target.value)} />
+                            <input
+                              type="number"
+                              min="1"
+                              max={item.available_qty}
+                              className="input text-center"
+                              value={item.quantity}
+                              onChange={e => updateItem(item.product_id, 'quantity', e.target.value)}
+                            />
                           </td>
                           <td className="td">
-                            <input type="number" min={item.min_selling_price} step="1" className={`input text-right w-full ${belowMin ? 'border-red-300 focus:border-red-500' : ''}`}
-                              value={item.selling_price} onChange={e => updateItem(item.product_id, 'selling_price', e.target.value)} />
-                            {belowMin && <p className="text-xs text-red-500 mt-0.5 text-right">Below minimum</p>}
+                            <input
+                              type="number"
+                              min={item.min_selling_price}
+                              className={`input text-right ${belowMin ? 'border-red-400 focus:ring-red-400' : ''}`}
+                              value={item.selling_price}
+                              onChange={e => updateItem(item.product_id, 'selling_price', e.target.value)}
+                            />
+                            {belowMin && (
+                              <p className="text-xs text-red-500 mt-0.5 text-right">
+                                Min is {fmt(item.min_selling_price)}
+                              </p>
+                            )}
                           </td>
                           <td className="td text-right font-bold text-indigo-600">
                             {fmt((parseFloat(item.selling_price) || 0) * item.quantity)}
                           </td>
                           <td className="td">
-                            <button onClick={() => removeItem(item.product_id)} className="p-1 hover:bg-red-50 rounded text-red-400">
+                            <button onClick={() => removeItem(item.product_id)}
+                              className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors float-right">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </td>
@@ -163,23 +258,32 @@ export default function BranchSalesPage() {
             )}
           </div>
 
-          {/* Cart summary */}
-          <div className="space-y-4">
-            <div className="card p-5 space-y-4">
+          {/* ── Sale summary sidebar ── */}
+          <div>
+            <div className="card p-5 space-y-4 sticky top-6">
               <h2 className="font-semibold text-gray-900">Sale Summary</h2>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-gray-600"><span>Items</span><span>{cart.length}</span></div>
-                <div className="flex justify-between text-gray-600"><span>Total Qty</span><span>{cart.reduce((s, c) => s + c.quantity, 0)}</span></div>
-                <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t"><span>Total</span><span className="text-indigo-600">{fmt(cartTotal)}</span></div>
+                <div className="flex justify-between text-gray-500">
+                  <span>Products</span><span>{cart.length}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>Total Qty</span><span>{cart.reduce((s, c) => s + c.quantity, 0)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-gray-900 text-base pt-3 border-t border-gray-100">
+                  <span>Total</span>
+                  <span className="text-indigo-600">{fmt(cartTotal)}</span>
+                </div>
               </div>
               <button
                 onClick={submitSale}
                 disabled={saving || cart.length === 0 || priceErrors.length > 0}
                 className="btn-success w-full justify-center disabled:opacity-50">
                 <CheckCircle className="w-4 h-4" />
-                {saving ? 'Processing...' : 'Complete Sale'}
+                {saving ? 'Processing…' : 'Complete Sale'}
               </button>
-              {priceErrors.length > 0 && <p className="text-xs text-red-500 text-center">Fix price errors above</p>}
+              {priceErrors.length > 0 && (
+                <p className="text-xs text-red-500 text-center">Fix price errors to continue</p>
+              )}
             </div>
           </div>
         </div>
@@ -206,7 +310,7 @@ export default function BranchSalesPage() {
                   <td className="td text-right text-gray-500">{fmt(s.selling_price)}</td>
                   <td className="td text-right font-medium text-indigo-600">{fmt(s.total_revenue)}</td>
                   <td className="td text-right font-medium text-emerald-600">{fmt(s.profit)}</td>
-                  <td className="td text-gray-500 text-sm">{new Date(s.created_at).toLocaleString()}</td>
+                  <td className="td text-gray-500 text-sm">{new Date(s.sold_at).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
