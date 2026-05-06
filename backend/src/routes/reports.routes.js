@@ -2,6 +2,52 @@ const router = require('express').Router();
 const { many, one } = require('../config/db');
 const { auth, branchGuard } = require('../middleware/auth');
 
+// ── Daily report (branch comparison + products) ───────────────────────
+router.get('/daily', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'super_admin') return res.status(403).json({ message: 'Admin only' });
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+
+    const branches = await many(
+      `SELECT b.id AS branch_id, b.name AS branch_name,
+              COALESCE(SUM(s.total_revenue), 0) AS revenue,
+              COALESCE(SUM(s.profit), 0) AS gross_profit,
+              COUNT(s.id) AS sales_count,
+              COALESCE(
+                (SELECT SUM(e.amount) FROM expenses e WHERE e.branch_id = b.id AND DATE(e.expense_date) = ?), 0
+              ) AS expenses
+       FROM branches b
+       LEFT JOIN sales s ON s.branch_id = b.id AND DATE(s.sold_at) = ?
+       WHERE b.is_active = 1
+       GROUP BY b.id ORDER BY revenue DESC`,
+      [date, date],
+    );
+
+    const branchesWithNet = branches.map(b => ({
+      ...b,
+      net_profit: parseFloat(b.gross_profit) - parseFloat(b.expenses),
+    }));
+
+    const products = await many(
+      `SELECT p.name AS product_name, COALESCE(c.name, 'Uncategorized') AS category_name,
+              b.name AS branch_name,
+              SUM(s.quantity) AS qty_sold,
+              SUM(s.total_revenue) AS revenue,
+              SUM(s.profit) AS profit
+       FROM sales s
+       JOIN products p ON p.id = s.product_id
+       JOIN branches b ON b.id = s.branch_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE DATE(s.sold_at) = ?
+       GROUP BY s.product_id, s.branch_id
+       ORDER BY p.name, b.name`,
+      [date],
+    );
+
+    res.json({ date, branches: branchesWithNet, products });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
 // ── Dashboard stats ───────────────────────────────────────────────────
 router.get('/dashboard', auth, async (req, res) => {
   try {
