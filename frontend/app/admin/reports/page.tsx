@@ -2,17 +2,16 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { fmt } from '@/lib/auth';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Download } from 'lucide-react';
 
 export default function AdminReportsPage() {
-  const [weekly, setWeekly]   = useState<any>(null);
-  const [branches, setBranches] = useState<any[]>([]);
+  const [weekly, setWeekly]         = useState<any>(null);
   const [branchReport, setBranchReport] = useState<any[]>([]);
-  const [tab, setTab]         = useState<'weekly' | 'branches'>('weekly');
-  const [loading, setLoading] = useState(true);
-
+  const [tab, setTab]               = useState<'weekly' | 'branches'>('weekly');
   const [weekOffset, setWeekOffset] = useState(0);
+  const [loading, setLoading]       = useState(true);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const loadWeekly = (offset: number) => {
     setLoading(true);
@@ -22,12 +21,89 @@ export default function AdminReportsPage() {
   };
 
   useEffect(() => {
-    api.get('/branches').then(r => setBranches(r.data));
     api.get('/reports/branches').then(r => setBranchReport(r.data));
     loadWeekly(0);
   }, []);
 
   useEffect(() => { loadWeekly(weekOffset); }, [weekOffset]);
+
+  const downloadWeeklyPdf = async () => {
+    if (!weekly) return;
+    setPdfLoading(true);
+    try {
+      const { default: jsPDF }     = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+      const doc = new jsPDF();
+
+      // Title
+      doc.setFontSize(20); doc.setTextColor(67, 56, 202);
+      doc.text('SockMS — Weekly Report', 14, 18);
+      doc.setFontSize(11); doc.setTextColor(100, 100, 100);
+      doc.text(`Period: ${weekly.period.start}  to  ${weekly.period.end}`, 14, 26);
+
+      // Summary cards as a table
+      doc.setFontSize(13); doc.setTextColor(0, 0, 0);
+      doc.text('Summary', 14, 36);
+      autoTable(doc, {
+        startY: 40,
+        head: [['Revenue', 'Gross Profit', 'Expenses', 'Net Profit', 'Transactions']],
+        body: [[
+          fmt(weekly.summary.revenue),
+          fmt(weekly.summary.gross_profit),
+          fmt(weekly.summary.expenses),
+          fmt(weekly.summary.net_profit),
+          weekly.summary.sales_count,
+        ]],
+        headStyles: { fillColor: [67, 56, 202] },
+        bodyStyles:  { halign: 'center' },
+      });
+
+      // Daily breakdown
+      const y1 = (doc as any).lastAutoTable.finalY + 10;
+      doc.text('Daily Breakdown', 14, y1);
+      autoTable(doc, {
+        startY: y1 + 4,
+        head: [['Day', 'Revenue', 'Expenses', 'Profit', 'Sales']],
+        body: weekly.daily.map((d: any) => [
+          d.day_label,
+          fmt(d.revenue),
+          fmt(d.expenses),
+          fmt(d.profit),
+          d.sales_count,
+        ]),
+        headStyles: { fillColor: [16, 185, 129] },
+        alternateRowStyles: { fillColor: [240, 253, 244] },
+      });
+
+      // Top products
+      if (weekly.top_products?.length) {
+        const y2 = (doc as any).lastAutoTable.finalY + 10;
+        doc.text('Top Products', 14, y2);
+        autoTable(doc, {
+          startY: y2 + 4,
+          head: [['Product', 'Units Sold', 'Revenue']],
+          body: weekly.top_products.map((p: any) => [p.name, p.qty_sold, fmt(p.revenue)]),
+          headStyles: { fillColor: [99, 102, 241] },
+          alternateRowStyles: { fillColor: [245, 245, 255] },
+        });
+      }
+
+      // Expense breakdown
+      if (weekly.expense_breakdown?.length) {
+        const y3 = (doc as any).lastAutoTable.finalY + 10;
+        doc.text('Expense Breakdown', 14, y3);
+        autoTable(doc, {
+          startY: y3 + 4,
+          head: [['Description', 'Branch', 'Amount']],
+          body: weekly.expense_breakdown.map((e: any) => [e.description, e.branch_name, fmt(e.amount)]),
+          headStyles: { fillColor: [248, 113, 113] },
+        });
+      }
+
+      doc.save(`SockMS-Weekly-${weekly.period.start}.pdf`);
+    } catch (e) { console.error(e); }
+    finally { setPdfLoading(false); }
+  };
 
   const tabs = [{ id: 'weekly', label: 'Weekly Report' }, { id: 'branches', label: 'Branch Comparison' }] as const;
 
@@ -51,13 +127,19 @@ export default function AdminReportsPage() {
 
       {tab === 'weekly' && (
         <div className="space-y-6">
-          {/* Week selector */}
-          <div className="flex items-center gap-3">
-            <button onClick={() => setWeekOffset(w => w + 1)} className="btn-ghost px-3">← Prev Week</button>
-            <span className="text-sm font-medium text-gray-700 min-w-40 text-center">
-              {weekly ? `${weekly.period.start} – ${weekly.period.end}` : '...'}
-            </span>
-            <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} className="btn-ghost px-3 disabled:opacity-40">Next Week →</button>
+          {/* Week nav + PDF */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <button onClick={() => setWeekOffset(w => w + 1)} className="btn-ghost px-3">← Prev</button>
+              <span className="text-sm font-medium text-gray-700 min-w-48 text-center">
+                {weekly ? `${weekly.period.start} – ${weekly.period.end}` : '...'}
+              </span>
+              <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0}
+                className="btn-ghost px-3 disabled:opacity-40">Next →</button>
+            </div>
+            <button onClick={downloadWeeklyPdf} disabled={pdfLoading || loading || !weekly} className="btn-primary disabled:opacity-50">
+              <Download className="w-4 h-4" />{pdfLoading ? 'Generating...' : 'Download PDF'}
+            </button>
           </div>
 
           {loading ? (
@@ -67,15 +149,15 @@ export default function AdminReportsPage() {
               {/* Summary cards */}
               <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 {[
-                  { label: 'Revenue',      value: fmt(weekly.summary.revenue),      color: 'bg-indigo-500' },
-                  { label: 'Gross Profit', value: fmt(weekly.summary.gross_profit), color: 'bg-emerald-500' },
-                  { label: 'Expenses',     value: fmt(weekly.summary.expenses),     color: 'bg-red-400' },
-                  { label: 'Net Profit',   value: fmt(weekly.summary.net_profit),   color: parseFloat(weekly.summary.net_profit) >= 0 ? 'bg-blue-500' : 'bg-orange-500' },
+                  { label: 'Revenue',      value: fmt(weekly.summary.revenue),      bar: 'bg-indigo-500' },
+                  { label: 'Gross Profit', value: fmt(weekly.summary.gross_profit), bar: 'bg-emerald-500' },
+                  { label: 'Expenses',     value: fmt(weekly.summary.expenses),     bar: 'bg-red-400' },
+                  { label: 'Net Profit',   value: fmt(weekly.summary.net_profit),   bar: parseFloat(weekly.summary.net_profit) >= 0 ? 'bg-blue-500' : 'bg-orange-500' },
                 ].map(c => (
                   <div key={c.label} className="card p-4">
                     <p className="text-sm text-gray-500">{c.label}</p>
                     <p className="text-xl font-bold text-gray-900 mt-1">{c.value}</p>
-                    <div className={`h-1 rounded-full mt-3 ${c.color} opacity-60`} />
+                    <div className={`h-1 rounded-full mt-3 ${c.bar} opacity-60`} />
                   </div>
                 ))}
               </div>
@@ -105,7 +187,7 @@ export default function AdminReportsPage() {
                   ) : (
                     <div className="space-y-2">
                       {weekly.top_products.map((p: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50">
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                           <div>
                             <p className="text-sm font-medium text-gray-800">{p.name}</p>
                             <p className="text-xs text-gray-500">{p.qty_sold} units sold</p>
@@ -118,24 +200,60 @@ export default function AdminReportsPage() {
                 </div>
               </div>
 
+              {/* Daily breakdown table */}
+              <div className="card overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <h2 className="font-semibold text-gray-800">Daily Breakdown</h2>
+                </div>
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="th">Day</th>
+                      <th className="th text-right">Revenue</th>
+                      <th className="th text-right">Expenses</th>
+                      <th className="th text-right">Gross Profit</th>
+                      <th className="th text-right">Sales</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {weekly.daily.map((d: any, i: number) => (
+                      <tr key={i} className={`hover:bg-gray-50 ${Number(d.revenue) === 0 ? 'opacity-40' : ''}`}>
+                        <td className="td font-medium">{d.day_label}</td>
+                        <td className="td text-right text-indigo-600 font-medium">{fmt(d.revenue)}</td>
+                        <td className="td text-right text-red-500">{fmt(d.expenses)}</td>
+                        <td className="td text-right text-emerald-600 font-medium">{fmt(d.profit)}</td>
+                        <td className="td text-right text-gray-500">{d.sales_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 border-t-2 border-gray-200 font-bold">
+                    <tr>
+                      <td className="td text-gray-700">Week Total</td>
+                      <td className="td text-right text-indigo-700">{fmt(weekly.summary.revenue)}</td>
+                      <td className="td text-right text-red-600">{fmt(weekly.summary.expenses)}</td>
+                      <td className="td text-right text-emerald-700">{fmt(weekly.summary.gross_profit)}</td>
+                      <td className="td text-right text-gray-700">{weekly.summary.sales_count}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
               {/* Expense breakdown */}
               {weekly.expense_breakdown.length > 0 && (
                 <div className="card p-5">
                   <h2 className="font-semibold text-gray-800 mb-4">Expense Breakdown</h2>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead><tr className="border-b"><th className="th pl-0">Description</th><th className="th">Branch</th><th className="th text-right pr-0">Amount</th></tr></thead>
-                      <tbody>
-                        {weekly.expense_breakdown.map((ex: any, i: number) => (
-                          <tr key={i} className="border-b border-gray-50">
-                            <td className="td pl-0">{ex.description}</td>
-                            <td className="td text-gray-500">{ex.branch_name}</td>
-                            <td className="td text-right pr-0 text-red-600 font-medium">{fmt(ex.amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b"><th className="th pl-0">Description</th><th className="th">Branch</th><th className="th text-right pr-0">Amount</th></tr></thead>
+                    <tbody>
+                      {weekly.expense_breakdown.map((ex: any, i: number) => (
+                        <tr key={i} className="border-b border-gray-50">
+                          <td className="td pl-0">{ex.description}</td>
+                          <td className="td text-gray-500">{ex.branch_name}</td>
+                          <td className="td text-right pr-0 text-red-600 font-medium">{fmt(ex.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </>
@@ -153,7 +271,10 @@ export default function AdminReportsPage() {
                   <div className="flex justify-between"><span className="text-gray-500">Revenue</span><span className="font-medium text-indigo-600">{fmt(b.revenue)}</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Gross Profit</span><span className="font-medium text-emerald-600">{fmt(b.gross_profit)}</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Expenses</span><span className="font-medium text-red-500">{fmt(b.expenses)}</span></div>
-                  <div className="flex justify-between pt-2 border-t"><span className="font-medium text-gray-700">Net Profit</span><span className={`font-bold ${parseFloat(b.net_profit) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{fmt(b.net_profit)}</span></div>
+                  <div className="flex justify-between pt-2 border-t">
+                    <span className="font-medium text-gray-700">Net Profit</span>
+                    <span className={`font-bold ${parseFloat(b.net_profit) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{fmt(b.net_profit)}</span>
+                  </div>
                   <div className="flex justify-between text-xs text-gray-400"><span>{b.sales_count} sales</span><span>{b.user_count} users</span></div>
                 </div>
               </div>
@@ -170,9 +291,9 @@ export default function AdminReportsPage() {
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v: any) => fmt(v)} />
                   <Legend />
-                  <Bar dataKey="revenue"     name="Revenue"     fill="#6366f1" radius={[4,4,0,0]} />
+                  <Bar dataKey="revenue"      name="Revenue"      fill="#6366f1" radius={[4,4,0,0]} />
                   <Bar dataKey="gross_profit" name="Gross Profit" fill="#10b981" radius={[4,4,0,0]} />
-                  <Bar dataKey="expenses"    name="Expenses"    fill="#f87171" radius={[4,4,0,0]} />
+                  <Bar dataKey="expenses"     name="Expenses"     fill="#f87171" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
