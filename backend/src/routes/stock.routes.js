@@ -22,29 +22,31 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// Add stock to a branch
+// Add stock to one branch or all branches
 router.post('/add', auth, adminOnly, async (req, res) => {
   try {
     const { branch_id, product_id, quantity } = req.body;
     if (!branch_id || !product_id || !quantity || quantity <= 0) {
       return res.status(400).json({ message: 'branch_id, product_id, and quantity > 0 required' });
     }
-    const existing = await one(
-      'SELECT id FROM branch_stock WHERE branch_id=? AND product_id=?',
-      [branch_id, product_id],
-    );
-    if (existing) {
-      await run(
-        'UPDATE branch_stock SET quantity = quantity + ? WHERE branch_id=? AND product_id=?',
-        [quantity, branch_id, product_id],
-      );
+
+    const addToBranch = async (bid) => {
+      const existing = await one('SELECT id FROM branch_stock WHERE branch_id=? AND product_id=?', [bid, product_id]);
+      if (existing) {
+        await run('UPDATE branch_stock SET quantity = quantity + ? WHERE branch_id=? AND product_id=?', [quantity, bid, product_id]);
+      } else {
+        await run('INSERT INTO branch_stock (id, branch_id, product_id, quantity) VALUES (?,?,?,?)', [uuid(), bid, product_id, quantity]);
+      }
+    };
+
+    if (branch_id === 'all') {
+      const branches = await many('SELECT id FROM branches WHERE is_active = 1', []);
+      for (const b of branches) await addToBranch(b.id);
+      res.json({ success: true, message: `Added ${quantity} units to all branches` });
     } else {
-      await run(
-        'INSERT INTO branch_stock (id, branch_id, product_id, quantity) VALUES (?,?,?,?)',
-        [uuid(), branch_id, product_id, quantity],
-      );
+      await addToBranch(branch_id);
+      res.json({ success: true, message: `Added ${quantity} units` });
     }
-    res.json({ success: true, message: `Added ${quantity} units` });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

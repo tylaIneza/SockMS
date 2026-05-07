@@ -116,7 +116,7 @@ export default function StockPage() {
       {tab === 'add' && (
         <div className="max-w-md">
           <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Package className="w-4 h-4" /> Add Stock to Branch</h2>
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Package className="w-4 h-4" /> Add Stock</h2>
             {error   && <div className="bg-red-50 text-red-700 text-sm rounded-lg px-3 py-2">{error}</div>}
             {success && <div className="bg-green-50 text-green-700 text-sm rounded-lg px-3 py-2">{success}</div>}
             <form onSubmit={handleAdd} className="space-y-4">
@@ -124,8 +124,14 @@ export default function StockPage() {
                 <label className="label">Branch</label>
                 <select className="input" value={addForm.branch_id} onChange={e => setAddForm({...addForm, branch_id: e.target.value})} required>
                   <option value="">Select branch</option>
+                  <option value="all">⭐ All Branches</option>
                   {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
+                {addForm.branch_id === 'all' && (
+                  <p className="text-xs text-indigo-600 mt-1">
+                    This quantity will be added to <strong>every branch</strong> ({branches.length} branches).
+                  </p>
+                )}
               </div>
               <div>
                 <label className="label">Product</label>
@@ -137,9 +143,15 @@ export default function StockPage() {
               <div>
                 <label className="label">Quantity</label>
                 <input type="number" min="1" className="input" value={addForm.quantity} onChange={e => setAddForm({...addForm, quantity: e.target.value})} required />
+                {addForm.branch_id === 'all' && addForm.quantity && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Total distributed: <strong>{parseInt(addForm.quantity) * branches.length} units</strong> ({addForm.quantity} × {branches.length} branches)
+                  </p>
+                )}
               </div>
               <button type="submit" disabled={saving} className="btn-primary w-full justify-center">
-                <Plus className="w-4 h-4" />{saving ? 'Adding...' : 'Add Stock'}
+                <Plus className="w-4 h-4" />
+                {saving ? 'Adding...' : addForm.branch_id === 'all' ? `Add to All ${branches.length} Branches` : 'Add Stock'}
               </button>
             </form>
           </div>
