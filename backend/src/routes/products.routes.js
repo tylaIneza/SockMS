@@ -3,6 +3,17 @@ const { v4: uuid } = require('uuid');
 const { many, one, run } = require('../config/db');
 const { auth, adminOnly } = require('../middleware/auth');
 
+// Create branch_stock row (qty 0) for every active branch so the product is visible system-wide
+async function initBranchStock(productId) {
+  const branches = await many('SELECT id FROM branches WHERE is_active = 1', []);
+  for (const b of branches) {
+    const exists = await one('SELECT id FROM branch_stock WHERE branch_id=? AND product_id=?', [b.id, productId]);
+    if (!exists) {
+      await run('INSERT INTO branch_stock (id, branch_id, product_id, quantity) VALUES (?,?,?,0)', [uuid(), b.id, productId]);
+    }
+  }
+}
+
 router.get('/', auth, async (req, res) => {
   try {
     const { search, category_id } = req.query;
@@ -52,6 +63,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
        VALUES (?,?,?,?,?,?,?)`,
       [id, name, category_id || null, buying_price, min_selling_price, low_stock_alert || 10, req.user.id],
     );
+    await initBranchStock(id);
     res.status(201).json(await one(
       'SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?',
       [id],
@@ -115,10 +127,12 @@ router.post('/import', auth, adminOnly, async (req, res) => {
           }
         }
 
+        const newId = uuid();
         await run(
           'INSERT INTO products (id, name, category_id, buying_price, min_selling_price, low_stock_alert, created_by) VALUES (?,?,?,?,?,?,?)',
-          [uuid(), name, categoryId, buyPrice, minPrice, parseInt(p.low_stock_alert) || 10, req.user.id],
+          [newId, name, categoryId, buyPrice, minPrice, parseInt(p.low_stock_alert) || 10, req.user.id],
         );
+        await initBranchStock(newId);
         created++;
       } catch (rowErr) {
         errors.push({ name: String(p.name || ''), reason: rowErr.message });
