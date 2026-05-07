@@ -2,10 +2,11 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { Plus, ArrowRightLeft, Package, Search } from 'lucide-react';
+import { useBranch } from '@/lib/branch-context';
 
 export default function StockPage() {
+  const { selectedBranch, branches } = useBranch();
   const [stock, setStock]       = useState<any[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
   const [search, setSearch]     = useState('');
@@ -17,17 +18,22 @@ export default function StockPage() {
   const [addForm, setAddForm]  = useState({ branch_id: '', product_id: '', quantity: '' });
   const [xferForm, setXferForm] = useState({ product_id: '', from_branch_id: '', to_branch_id: '', quantity: '' });
 
+  // Sync add form branch when global selector changes
+  useEffect(() => {
+    setAddForm(f => ({ ...f, branch_id: selectedBranch }));
+  }, [selectedBranch]);
+
   const load = () => {
     api.get('/stock').then(r => setStock(r.data));
-    api.get('/branches').then(r => setBranches(r.data));
     api.get('/products').then(r => setProducts(r.data));
     api.get('/stock/transfers').then(r => setTransfers(r.data));
   };
   useEffect(() => { load(); }, []);
 
   const filtered = stock.filter(s =>
-    s.product_name.toLowerCase().includes(search.toLowerCase()) ||
-    s.branch_name.toLowerCase().includes(search.toLowerCase())
+    (selectedBranch === 'all' || s.branch_id === selectedBranch) &&
+    (s.product_name.toLowerCase().includes(search.toLowerCase()) ||
+     s.branch_name.toLowerCase().includes(search.toLowerCase()))
   );
 
   const handleAdd = async (e: React.FormEvent) => {

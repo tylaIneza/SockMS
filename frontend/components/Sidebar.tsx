@@ -3,8 +3,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { logout, getUser } from '@/lib/auth';
 import {
   LayoutDashboard, Package, GitBranch, Users, ArrowLeftRight,
-  ShoppingCart, Receipt, BarChart2, LogOut, ChevronRight, Boxes,
+  ShoppingCart, Receipt, BarChart2, LogOut, ChevronRight, Boxes, Building2,
 } from 'lucide-react';
+import { useBranch } from '@/lib/branch-context';
 
 const adminNav = [
   { href: '/admin',           label: 'Dashboard',  icon: LayoutDashboard },
@@ -31,6 +32,8 @@ export default function Sidebar() {
   const isAdmin  = user?.role === 'super_admin';
   const nav      = isAdmin ? adminNav : branchNav;
 
+  const { selectedBranch, setSelectedBranch, branches } = useBranch();
+
   const isActive = (href: string) =>
     href === (isAdmin ? '/admin' : '/branch') ? pathname === href : pathname.startsWith(href);
 
@@ -46,6 +49,30 @@ export default function Sidebar() {
         </div>
         <p className="text-xs text-slate-400 mt-0.5">{isAdmin ? 'Super Admin' : user?.branch_name}</p>
       </div>
+
+      {/* Global branch selector (admin only) */}
+      {isAdmin && branches.length > 0 && (
+        <div className="px-3 py-3 border-b border-slate-700">
+          <div className="flex items-center gap-2 px-2 mb-1.5">
+            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Active Branch</span>
+          </div>
+          <select
+            value={selectedBranch}
+            onChange={e => setSelectedBranch(e.target.value)}
+            className="w-full bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:outline-none focus:border-indigo-500 cursor-pointer"
+          >
+            <option value="all">All Branches</option>
+            {branches.map((b: any) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+          {selectedBranch === 'all'
+            ? <p className="text-xs text-indigo-400 mt-1 px-1">Actions apply to all branches</p>
+            : <p className="text-xs text-emerald-400 mt-1 px-1">Actions apply to selected branch only</p>
+          }
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">

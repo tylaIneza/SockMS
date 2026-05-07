@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { getToken, getUser } from '@/lib/auth';
+import { BranchProvider } from '@/lib/branch-context';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -14,9 +15,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
   if (!ok) return <div className="min-h-screen bg-gray-50" />;
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
-    </div>
+    <BranchProvider>
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 overflow-auto">{children}</main>
+      </div>
+    </BranchProvider>
   );
 }

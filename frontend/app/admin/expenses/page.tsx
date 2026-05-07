@@ -3,19 +3,17 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { fmt } from '@/lib/auth';
 import { Plus, Trash2 } from 'lucide-react';
+import { useBranch } from '@/lib/branch-context';
 
 export default function AdminExpensesPage() {
+  const { selectedBranch, branches } = useBranch();
   const [expenses, setExpenses] = useState<any[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
   const [modal, setModal]       = useState(false);
   const [form, setForm]         = useState({ branch_id: '', title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) });
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
 
-  const load = () => {
-    api.get('/expenses').then(r => setExpenses(r.data));
-    api.get('/branches').then(r => setBranches(r.data));
-  };
+  const load = () => { api.get('/expenses').then(r => setExpenses(r.data)); };
   useEffect(() => { load(); }, []);
 
   const save = async (e: React.FormEvent) => {
@@ -41,7 +39,7 @@ export default function AdminExpensesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
           <p className="text-gray-500 text-sm mt-1">Total: {fmt(total)}</p>
         </div>
-        <button onClick={() => { setForm({ branch_id: '', title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) }); setError(''); setModal(true); }} className="btn-primary">
+        <button onClick={() => { setForm({ branch_id: selectedBranch === 'all' ? '' : selectedBranch, title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) }); setError(''); setModal(true); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Add Expense
         </button>
       </div>
