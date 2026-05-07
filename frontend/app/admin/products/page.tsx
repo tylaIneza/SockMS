@@ -12,6 +12,7 @@ interface ParsedRow {
   buying_price: string;
   min_selling_price: string;
   low_stock_alert: string;
+  quantity: string;
   _error?: string;
 }
 
@@ -23,6 +24,7 @@ function normaliseKey(raw: string): string {
   if (['buyingprice','buyprice','cost','purchaseprice','buying'].includes(k))     return 'buying_price';
   if (['minsellingprice','minprice','minimumprice','sellingprice','minselling','minimumsellingprice'].includes(k)) return 'min_selling_price';
   if (['lowstockalert','alert','lowstock','reorderpoint','lowstocklevel'].includes(k)) return 'low_stock_alert';
+  if (['quantity','qty','stock','initialstock','initialqty','stockquantity'].includes(k)) return 'quantity';
   return raw;
 }
 
@@ -87,13 +89,12 @@ export default function ProductsPage() {
   const downloadTemplate = async () => {
     const XLSX = await import('xlsx');
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Name', 'Category', 'Buying Price', 'Min Selling Price', 'Low Stock Alert'],
-      ['Coca-Cola 300ml', 'Beverages', 300, 450, 50],
-      ['A4 Paper Ream', 'Stationery', 3500, 5000, 20],
-      ['Men\'s T-Shirt', 'Clothing', 3000, 5500, 10],
+      ['Name', 'Category', 'Buying Price', 'Min Selling Price', 'Low Stock Alert', 'Quantity'],
+      ['Coca-Cola 300ml', 'Beverages', 300, 450, 50, 100],
+      ['A4 Paper Ream', 'Stationery', 3500, 5000, 20, 50],
+      ['Men\'s T-Shirt', 'Clothing', 3000, 5500, 10, 30],
     ]);
-    // Column widths
-    ws['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 16 }];
+    ws['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 12 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Products');
     XLSX.writeFile(wb, 'SockMS-product-template.xlsx');
@@ -117,6 +118,7 @@ export default function ProductsPage() {
         buying_price:      norm.buying_price      || '',
         min_selling_price: norm.min_selling_price || '',
         low_stock_alert:   norm.low_stock_alert   || '10',
+        quantity:          norm.quantity          || '0',
       };
       row._error = validateRow(row);
       return row;
@@ -152,6 +154,7 @@ export default function ProductsPage() {
           buying_price:      r.buying_price,
           min_selling_price: r.min_selling_price,
           low_stock_alert:   r.low_stock_alert || 10,
+          quantity:          r.quantity || 0,
         })),
       });
       setImportResult(data);
@@ -321,6 +324,7 @@ export default function ProductsPage() {
                           <th className="th">Category</th>
                           <th className="th text-right">Buy Price</th>
                           <th className="th text-right">Min Price</th>
+                          <th className="th text-right">Qty</th>
                           <th className="th text-right">Alert</th>
                           <th className="th">Status</th>
                         </tr>
@@ -333,6 +337,7 @@ export default function ProductsPage() {
                             <td className="td text-gray-500">{row.category || '—'}</td>
                             <td className="td text-right">{row.buying_price ? fmt(row.buying_price) : <span className="text-red-400">—</span>}</td>
                             <td className="td text-right">{row.min_selling_price ? fmt(row.min_selling_price) : <span className="text-red-400">—</span>}</td>
+                            <td className="td text-right font-semibold text-indigo-600">{parseInt(row.quantity) || 0}</td>
                             <td className="td text-right">{row.low_stock_alert || 10}</td>
                             <td className="td">
                               {row._error
@@ -379,7 +384,7 @@ export default function ProductsPage() {
             {/* Footer */}
             <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between gap-3">
               <p className="text-xs text-gray-400">
-                Required columns: <strong>Name, Buying Price, Min Selling Price</strong>. Optional: Category, Low Stock Alert.
+                Required: <strong>Name, Buying Price, Min Selling Price</strong>. Optional: Category, Low Stock Alert, <strong>Quantity</strong> (stock sent to all branches).
               </p>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => setImportModal(false)} className="btn-ghost">
