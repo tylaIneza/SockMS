@@ -59,8 +59,8 @@ export default function BranchSalesPage() {
       category_name:     s.category_name || '',
       min_selling_price: parseFloat(s.min_selling_price),
       available_qty:     s.quantity,
-      quantity:          1,
-      selling_price:     String(s.min_selling_price),
+      quantity:          0,
+      selling_price:     '',
     }]);
     setQuery('');
     setDropOpen(false);
@@ -71,7 +71,7 @@ export default function BranchSalesPage() {
   const updateItem = (id: string, field: 'quantity' | 'selling_price', val: string) => {
     setCart(prev => prev.map(c =>
       c.product_id === id
-        ? { ...c, [field]: field === 'quantity' ? Math.min(parseInt(val) || 1, c.available_qty) : val }
+        ? { ...c, [field]: field === 'quantity' ? Math.min(parseInt(val) || 0, c.available_qty) : val }
         : c
     ));
   };
@@ -83,6 +83,11 @@ export default function BranchSalesPage() {
 
   const submitSale = async () => {
     if (cart.length === 0) return;
+    const emptyFields = cart.filter(c => c.quantity <= 0 || c.selling_price === '');
+    if (emptyFields.length > 0) {
+      setError(`Enter qty and price for: ${emptyFields.map(e => e.product_name).join(', ')}`);
+      return;
+    }
     if (priceErrors.length > 0) {
       setError(`Price below minimum for: ${priceErrors.map(e => e.product_name).join(', ')}`);
       return;
@@ -222,7 +227,7 @@ export default function BranchSalesPage() {
                               min="1"
                               max={item.available_qty}
                               className="input text-center"
-                              value={item.quantity}
+                              value={item.quantity === 0 ? '' : item.quantity}
                               onChange={e => updateItem(item.product_id, 'quantity', e.target.value)}
                             />
                           </td>
