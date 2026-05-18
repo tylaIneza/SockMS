@@ -10,7 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [ok, setOk] = useState(false);
   useEffect(() => {
     const token = getToken(); const user = getUser();
-    if (!token || !user || user.role !== 'super_admin') { router.push('/login'); return; }
+    if (!token || !user || !['super_admin', 'manager'].includes(user.role)) { router.push('/login'); return; }
     setOk(true);
   }, []);
   if (!ok) return <div className="min-h-screen bg-gray-50" />;

@@ -2,25 +2,30 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { fmt } from '@/lib/auth';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Check, X, Clock, Pencil } from 'lucide-react';
 import { useBranch } from '@/lib/branch-context';
 
 export default function AdminExpensesPage() {
-  const { selectedBranch, branches } = useBranch();
+  const { selectedUser, users } = useBranch();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [modal, setModal]       = useState(false);
-  const [form, setForm]         = useState({ branch_id: '', title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) });
+  const [form, setForm]         = useState({ user_id: '', title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) });
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
 
-  const load = () => { api.get('/expenses').then(r => setExpenses(r.data)); };
-  useEffect(() => { load(); }, []);
+  const load = () => {
+    const params = selectedUser !== 'all' ? `?user_id=${selectedUser}` : '';
+    api.get(`/expenses${params}`).then(r => setExpenses(r.data));
+  };
+  useEffect(() => { load(); }, [selectedUser]);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true); setError('');
     try {
       await api.post('/expenses', form);
-      setModal(false); setForm({ branch_id: '', description: '', amount: '' }); load();
+      setModal(false);
+      setForm({ user_id: '', title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) });
+      load();
     } catch (e: any) { setError(e.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
   };
@@ -29,6 +34,9 @@ export default function AdminExpensesPage() {
     if (!confirm('Delete this expense?')) return;
     await api.delete(`/expenses/${id}`); load();
   };
+
+  const approve = async (id: string) => { await api.post(`/expenses/${id}/approve`); load(); };
+  const reject  = async (id: string) => { await api.post(`/expenses/${id}/reject`);  load(); };
 
   const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
 
@@ -39,7 +47,7 @@ export default function AdminExpensesPage() {
           <h1 className="text-2xl font-bold text-white">Expenses</h1>
           <p className="text-slate-400 text-sm mt-1">Total: {fmt(total)}</p>
         </div>
-        <button onClick={() => { setForm({ branch_id: selectedBranch === 'all' ? '' : selectedBranch, title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) }); setError(''); setModal(true); }} className="btn-primary">
+        <button onClick={() => { setForm({ user_id: selectedUser !== 'all' ? selectedUser : '', title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) }); setError(''); setModal(true); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Add Expense
         </button>
       </div>
@@ -49,9 +57,10 @@ export default function AdminExpensesPage() {
           <thead className="thead-dark">
             <tr>
               <th className="th">Description</th>
-              <th className="th">Branch</th>
+              <th className="th">User</th>
               <th className="th text-right">Amount</th>
               <th className="th">Date</th>
+              <th className="th">Status</th>
               <th className="th"></th>
             </tr>
           </thead>
@@ -59,13 +68,30 @@ export default function AdminExpensesPage() {
             {expenses.map((e: any) => (
               <tr key={e.id} className="hover:bg-white/5">
                 <td className="td font-medium">{e.title}</td>
-                <td className="td text-slate-400">{e.branch_name}</td>
-                <td className="td text-right font-medium text-red-600">{fmt(e.amount)}</td>
-                <td className="td text-slate-400 text-sm">{new Date(e.created_at).toLocaleDateString()}</td>
+                <td className="td text-slate-400">{e.user_name}</td>
+                <td className="td text-right font-medium text-red-400">{fmt(e.amount)}</td>
+                <td className="td text-slate-400 text-sm">{new Date(e.expense_date).toLocaleDateString()}</td>
                 <td className="td">
-                  <button onClick={() => del(e.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 float-right">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {e.approval_status === 'pending'
+                    ? <span className="flex items-center gap-1 text-amber-400 text-xs font-semibold"><Clock className="w-3 h-3" /> Pending</span>
+                    : <span className="text-emerald-400 text-xs font-semibold">Approved</span>}
+                </td>
+                <td className="td">
+                  <div className="flex items-center gap-1 justify-end">
+                    {e.approval_status === 'pending' && (
+                      <>
+                        <button onClick={() => approve(e.id)} title="Approve" className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => reject(e.id)} title="Reject" className="p-1.5 rounded-lg hover:bg-slate-500/10 text-slate-400">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                    <button onClick={() => del(e.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -84,10 +110,10 @@ export default function AdminExpensesPage() {
             <form onSubmit={save} className="p-6 space-y-4">
               {error && <div className="alert-error text-sm rounded-lg px-3 py-2">{error}</div>}
               <div>
-                <label className="label">Branch</label>
-                <select className="input" value={form.branch_id} onChange={e => setForm({...form, branch_id: e.target.value})} required>
-                  <option value="">Select branch</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                <label className="label">User</label>
+                <select className="input" value={form.user_id} onChange={e => setForm({...form, user_id: e.target.value})} required>
+                  <option value="">Select user</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
               <div>

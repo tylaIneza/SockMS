@@ -103,7 +103,6 @@ export default function BranchDashboard() {
             </p>
             <h1 className="text-2xl font-black text-white">{user?.name} 👋</h1>
             <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {user?.branch_name} &nbsp;·&nbsp;
               {new Date().toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </div>

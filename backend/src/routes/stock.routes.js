@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { many, one, run } = require('../config/db');
 const { auth, adminOnly } = require('../middleware/auth');
+const { audit } = require('../utils/audit');
 
 // Global stock — shared by all branches
 router.get('/', auth, async (req, res) => {
@@ -31,6 +32,7 @@ router.post('/add', auth, adminOnly, async (req, res) => {
     } else {
       await run('INSERT INTO product_stock (product_id, quantity) VALUES (?, ?)', [product_id, quantity]);
     }
+    await audit(req.user, 'stock.add', 'stock', product_id, { product_id, quantity });
     res.json({ success: true, message: `Added ${quantity} units` });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });

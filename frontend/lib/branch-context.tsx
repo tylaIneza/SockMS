@@ -2,38 +2,38 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from './api';
 
-interface BranchContextType {
-  selectedBranch: string;
-  setSelectedBranch: (id: string) => void;
-  branches: any[];
+interface UserContextType {
+  selectedUser: string;
+  setSelectedUser: (id: string) => void;
+  users: any[];
 }
 
-const BranchContext = createContext<BranchContextType>({
-  selectedBranch: 'all',
-  setSelectedBranch: () => {},
-  branches: [],
+const UserContext = createContext<UserContextType>({
+  selectedUser: 'all',
+  setSelectedUser: () => {},
+  users: [],
 });
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
-  const [selectedBranch, setSelectedBranchState] = useState('all');
-  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedUser, setSelectedUserState] = useState('all');
+  const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('admin_selected_branch');
-    if (saved) setSelectedBranchState(saved);
-    api.get('/branches').then(r => setBranches(r.data)).catch(() => {});
+    const saved = localStorage.getItem('admin_selected_user');
+    if (saved) setSelectedUserState(saved);
+    api.get('/users').then(r => setUsers(r.data.filter((u: any) => u.role === 'branch_user'))).catch(() => {});
   }, []);
 
-  const setSelectedBranch = (id: string) => {
-    setSelectedBranchState(id);
-    localStorage.setItem('admin_selected_branch', id);
+  const setSelectedUser = (id: string) => {
+    setSelectedUserState(id);
+    localStorage.setItem('admin_selected_user', id);
   };
 
   return (
-    <BranchContext.Provider value={{ selectedBranch, setSelectedBranch, branches }}>
+    <UserContext.Provider value={{ selectedUser, setSelectedUser, users }}>
       {children}
-    </BranchContext.Provider>
+    </UserContext.Provider>
   );
 }
 
-export const useBranch = () => useContext(BranchContext);
+export const useBranch = () => useContext(UserContext);

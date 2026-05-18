@@ -1,90 +1,90 @@
 const router = require('express').Router();
 const { many, one } = require('../config/db');
-const { auth, branchGuard } = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
-// ── Daily report (branch comparison + products) ───────────────────────
+// ── Daily report (user comparison + products) ─────────────────────────
 router.get('/daily', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'super_admin') return res.status(403).json({ message: 'Admin only' });
+    if (!['super_admin','manager'].includes(req.user.role)) return res.status(403).json({ message: 'Admin only' });
     const date = req.query.date || new Date().toISOString().slice(0, 10);
 
-    const branches = await many(
-      `SELECT b.id AS branch_id, b.name AS branch_name,
+    const users = await many(
+      `SELECT u.id AS user_id, u.name AS user_name,
               COALESCE(SUM(s.total_revenue), 0) AS revenue,
               COALESCE(SUM(s.profit), 0) AS gross_profit,
               COUNT(s.id) AS sales_count,
               COALESCE(
-                (SELECT SUM(e.amount) FROM expenses e WHERE e.branch_id = b.id AND DATE(e.expense_date) = ?), 0
+                (SELECT SUM(e.amount) FROM expenses e WHERE e.user_id = u.id AND DATE(e.expense_date) = ?), 0
               ) AS expenses
-       FROM branches b
-       LEFT JOIN sales s ON s.branch_id = b.id AND DATE(s.sold_at) = ?
-       WHERE b.is_active = 1
-       GROUP BY b.id ORDER BY revenue DESC`,
+       FROM users u
+       LEFT JOIN sales s ON s.user_id = u.id AND DATE(s.sold_at) = ?
+       WHERE u.is_active = 1 AND u.role = 'branch_user'
+       GROUP BY u.id ORDER BY revenue DESC`,
       [date, date],
     );
 
-    const branchesWithNet = branches.map(b => ({
-      ...b,
-      net_profit: parseFloat(b.gross_profit) - parseFloat(b.expenses),
+    const usersWithNet = users.map(u => ({
+      ...u,
+      net_profit: parseFloat(u.gross_profit) - parseFloat(u.expenses),
     }));
 
     const products = await many(
       `SELECT p.name AS product_name, COALESCE(c.name, 'Uncategorized') AS category_name,
-              b.name AS branch_name,
+              u.name AS user_name,
               SUM(s.quantity) AS qty_sold,
               SUM(s.total_revenue) AS revenue,
               SUM(s.profit) AS profit
        FROM sales s
        JOIN products p ON p.id = s.product_id
-       JOIN branches b ON b.id = s.branch_id
+       JOIN users u ON u.id = s.user_id
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE DATE(s.sold_at) = ?
-       GROUP BY s.product_id, s.branch_id
-       ORDER BY p.name, b.name`,
+       GROUP BY s.product_id, s.user_id
+       ORDER BY p.name, u.name`,
       [date],
     );
 
-    res.json({ date, branches: branchesWithNet, products });
+    res.json({ date, users: usersWithNet, products });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // ── Dashboard stats ───────────────────────────────────────────────────
 router.get('/dashboard', auth, async (req, res) => {
   try {
-    const branchId = req.user.role === 'branch_user' ? req.user.branch_id : req.query.branch_id;
-    const bFilter  = branchId ? 'AND s.branch_id = ?' : '';
-    const eFilter  = branchId ? 'AND e.branch_id = ?' : '';
-    const bp       = branchId ? [branchId] : [];
+    const userId = req.user.role === 'branch_user' ? req.user.id : req.query.user_id;
+    const uFilter = userId ? 'AND s.user_id = ?' : '';
+    const eFilter = userId ? 'AND e.user_id = ?' : '';
+    const up      = userId ? [userId] : [];
 
     const todaySales = await one(
       `SELECT COALESCE(SUM(total_revenue),0) AS revenue,
               COALESCE(SUM(profit),0) AS profit,
               COUNT(*) AS sales_count
-       FROM sales s WHERE DATE(s.sold_at) = CURDATE() ${bFilter}`, bp);
+       FROM sales s WHERE DATE(s.sold_at) = CURDATE() ${uFilter}`, up);
 
     const weekSales = await one(
       `SELECT COALESCE(SUM(total_revenue),0) AS revenue,
               COALESCE(SUM(profit),0) AS profit
-       FROM sales s WHERE YEARWEEK(s.sold_at,1)=YEARWEEK(CURDATE(),1) ${bFilter}`, bp);
+       FROM sales s WHERE YEARWEEK(s.sold_at,1)=YEARWEEK(CURDATE(),1) ${uFilter}`, up);
 
     const weekExp = await one(
       `SELECT COALESCE(SUM(amount),0) AS total
-       FROM expenses e WHERE YEARWEEK(e.expense_date,1)=YEARWEEK(CURDATE(),1) ${eFilter}`, bp);
+       FROM expenses e WHERE YEARWEEK(e.expense_date,1)=YEARWEEK(CURDATE(),1) ${eFilter}`, up);
 
     const allTime = await one(
       `SELECT COALESCE(SUM(total_revenue),0) AS revenue,
               COALESCE(SUM(profit),0) AS profit,
               COUNT(*) AS sales_count
-       FROM sales s WHERE 1=1 ${bFilter}`, bp);
+       FROM sales s WHERE 1=1 ${uFilter}`, up);
 
     const allExp = await one(
-      `SELECT COALESCE(SUM(amount),0) AS total FROM expenses e WHERE 1=1 ${eFilter}`, bp);
+      `SELECT COALESCE(SUM(amount),0) AS total FROM expenses e WHERE 1=1 ${eFilter}`, up);
 
     const topProducts = await many(
       `SELECT p.name, SUM(s.quantity) AS qty_sold, SUM(s.total_revenue) AS revenue
        FROM sales s JOIN products p ON p.id=s.product_id
-       WHERE YEARWEEK(s.sold_at,1)=YEARWEEK(CURDATE(),1) ${bFilter}
-       GROUP BY s.product_id ORDER BY qty_sold DESC LIMIT 5`, bp);
+       WHERE YEARWEEK(s.sold_at,1)=YEARWEEK(CURDATE(),1) ${uFilter}
+       GROUP BY s.product_id ORDER BY qty_sold DESC LIMIT 5`, up);
 
     const lowStock = await many(
       `SELECT p.name, p.low_stock_alert, ps.quantity, c.name AS category_name
@@ -101,30 +101,30 @@ router.get('/dashboard', auth, async (req, res) => {
               SUM(s.total_revenue) AS revenue,
               SUM(s.profit) AS profit
        FROM sales s
-       WHERE s.sold_at >= DATE_SUB(CURDATE(), INTERVAL 8 WEEK) ${bFilter}
-       GROUP BY YEARWEEK(s.sold_at,1) ORDER BY week`, bp);
+       WHERE s.sold_at >= DATE_SUB(CURDATE(), INTERVAL 8 WEEK) ${uFilter}
+       GROUP BY YEARWEEK(s.sold_at,1) ORDER BY week`, up);
 
-    let branchSummary = [];
-    if (req.user.role === 'super_admin') {
-      branchSummary = await many(
-        `SELECT b.name AS branch_name,
+    let userSummary = [];
+    if (['super_admin','manager'].includes(req.user.role)) {
+      userSummary = await many(
+        `SELECT u.name AS user_name,
                 COALESCE(SUM(s.total_revenue),0) AS revenue,
                 COALESCE(SUM(s.profit),0) AS profit,
                 COUNT(s.id) AS sales_count
-         FROM branches b
-         LEFT JOIN sales s ON s.branch_id=b.id
-         WHERE b.is_active=1
-         GROUP BY b.id ORDER BY revenue DESC`);
+         FROM users u
+         LEFT JOIN sales s ON s.user_id=u.id
+         WHERE u.is_active=1 AND u.role = 'branch_user'
+         GROUP BY u.id ORDER BY revenue DESC`);
     }
 
     res.json({
-      today:          { revenue: todaySales?.revenue || 0, profit: todaySales?.profit || 0, sales_count: todaySales?.sales_count || 0 },
-      this_week:      { revenue: weekSales?.revenue || 0, profit: weekSales?.profit || 0, expenses: weekExp?.total || 0 },
-      all_time:       { revenue: allTime?.revenue || 0, profit: allTime?.profit || 0, expenses: allExp?.total || 0, sales_count: allTime?.sales_count || 0 },
-      top_products:   topProducts,
-      low_stock:      lowStock,
-      weekly_chart:   weeklyChart,
-      branch_summary: branchSummary,
+      today:        { revenue: todaySales?.revenue || 0, profit: todaySales?.profit || 0, sales_count: todaySales?.sales_count || 0 },
+      this_week:    { revenue: weekSales?.revenue || 0, profit: weekSales?.profit || 0, expenses: weekExp?.total || 0 },
+      all_time:     { revenue: allTime?.revenue || 0, profit: allTime?.profit || 0, expenses: allExp?.total || 0, sales_count: allTime?.sales_count || 0 },
+      top_products: topProducts,
+      low_stock:    lowStock,
+      weekly_chart: weeklyChart,
+      user_summary: userSummary,
     });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -132,12 +132,11 @@ router.get('/dashboard', auth, async (req, res) => {
 // ── Weekly report ─────────────────────────────────────────────────────
 router.get('/weekly', auth, async (req, res) => {
   try {
-    const branchId = req.user.role === 'branch_user' ? req.user.branch_id : req.query.branch_id;
+    const userId = req.user.role === 'branch_user' ? req.user.id : req.query.user_id;
     const weekOffset = parseInt(req.query.week_offset) || 0;
 
-    // Calculate week start (Monday) and end (Sunday) for the offset
     const now = new Date();
-    const day = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0=Mon
+    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
     const monday = new Date(now);
     monday.setDate(now.getDate() - day - weekOffset * 7);
     monday.setHours(0, 0, 0, 0);
@@ -147,16 +146,16 @@ router.get('/weekly', auth, async (req, res) => {
     const sd = monday.toISOString().slice(0, 10);
     const ed = sunday.toISOString().slice(0, 10);
 
-    const bFilter  = branchId ? 'AND s.branch_id=?' : '';
-    const eFilter  = branchId ? 'AND e.branch_id=?' : '';
-    const bp       = branchId ? [sd, ed, branchId] : [sd, ed];
-    const ep       = branchId ? [sd, ed, branchId] : [sd, ed];
+    const uFilter = userId ? 'AND s.user_id=?' : '';
+    const eFilter = userId ? 'AND e.user_id=?' : '';
+    const bp      = userId ? [sd, ed, userId] : [sd, ed];
+    const ep      = userId ? [sd, ed, userId] : [sd, ed];
 
     const summary = await one(
       `SELECT COALESCE(SUM(total_revenue),0) AS revenue,
               COALESCE(SUM(profit),0) AS gross_profit,
               COUNT(*) AS sales_count
-       FROM sales s WHERE DATE(sold_at) BETWEEN ? AND ? ${bFilter}`, bp);
+       FROM sales s WHERE DATE(sold_at) BETWEEN ? AND ? ${uFilter}`, bp);
 
     const expTotal = await one(
       `SELECT COALESCE(SUM(amount),0) AS total
@@ -165,20 +164,18 @@ router.get('/weekly', auth, async (req, res) => {
     const topProducts = await many(
       `SELECT p.name, SUM(s.quantity) AS qty_sold, SUM(s.total_revenue) AS revenue
        FROM sales s JOIN products p ON p.id=s.product_id
-       WHERE DATE(s.sold_at) BETWEEN ? AND ? ${bFilter}
+       WHERE DATE(s.sold_at) BETWEEN ? AND ? ${uFilter}
        GROUP BY s.product_id ORDER BY qty_sold DESC LIMIT 10`, bp);
 
-    // Daily breakdown with expenses
     const daily = await many(
       `SELECT DATE(sold_at) AS date,
               DATE_FORMAT(DATE(sold_at), '%a %d') AS day_label,
               SUM(total_revenue) AS revenue,
               SUM(profit) AS profit,
               COUNT(*) AS sales_count
-       FROM sales s WHERE DATE(sold_at) BETWEEN ? AND ? ${bFilter}
+       FROM sales s WHERE DATE(sold_at) BETWEEN ? AND ? ${uFilter}
        GROUP BY DATE(sold_at) ORDER BY date`, bp);
 
-    // Merge in expense data per day
     const dailyExp = await many(
       `SELECT expense_date AS date, SUM(amount) AS expenses
        FROM expenses e WHERE expense_date BETWEEN ? AND ? ${eFilter}
@@ -196,17 +193,17 @@ router.get('/weekly', auth, async (req, res) => {
       allDays.push({
         date: dateStr,
         day_label: found?.day_label || dayLabel,
-        revenue: found?.revenue || 0,
-        profit: found?.profit || 0,
-        expenses: expMap[dateStr] || 0,
+        revenue:     found?.revenue || 0,
+        profit:      found?.profit  || 0,
+        expenses:    expMap[dateStr] || 0,
         sales_count: found?.sales_count || 0,
       });
     }
 
     const expenseBreakdown = await many(
-      `SELECT e.title AS description, b.name AS branch_name, e.amount
+      `SELECT e.title AS description, u.name AS user_name, e.amount
        FROM expenses e
-       JOIN branches b ON b.id=e.branch_id
+       JOIN users u ON u.id=e.user_id
        WHERE e.expense_date BETWEEN ? AND ? ${eFilter}
        ORDER BY e.amount DESC`, ep);
 
@@ -214,8 +211,8 @@ router.get('/weekly', auth, async (req, res) => {
     const expenses    = parseFloat(expTotal?.total || 0);
 
     res.json({
-      period:   { start: sd, end: ed },
-      summary:  {
+      period:  { start: sd, end: ed },
+      summary: {
         revenue:      parseFloat(summary?.revenue || 0),
         gross_profit: grossProfit,
         expenses,
@@ -229,22 +226,21 @@ router.get('/weekly', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// ── Branch comparison (admin) ─────────────────────────────────────────
-router.get('/branches', auth, async (req, res) => {
+// ── User comparison (admin) ───────────────────────────────────────────
+router.get('/users', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'super_admin') return res.status(403).json({ message: 'Admin only' });
+    if (!['super_admin','manager'].includes(req.user.role)) return res.status(403).json({ message: 'Admin only' });
 
     const rows = await many(
-      `SELECT b.id AS branch_id, b.name AS branch_name,
+      `SELECT u.id AS user_id, u.name AS user_name,
               COALESCE(SUM(s.total_revenue),0) AS revenue,
               COALESCE(SUM(s.profit),0) AS gross_profit,
               COUNT(s.id) AS sales_count,
-              COALESCE((SELECT SUM(amount) FROM expenses e WHERE e.branch_id=b.id),0) AS expenses,
-              (SELECT COUNT(*) FROM users u WHERE u.branch_id=b.id AND u.is_active=1) AS user_count
-       FROM branches b
-       LEFT JOIN sales s ON s.branch_id=b.id
-       WHERE b.is_active=1
-       GROUP BY b.id ORDER BY revenue DESC`);
+              COALESCE((SELECT SUM(amount) FROM expenses e WHERE e.user_id=u.id),0) AS expenses
+       FROM users u
+       LEFT JOIN sales s ON s.user_id=u.id
+       WHERE u.is_active=1 AND u.role = 'branch_user'
+       GROUP BY u.id ORDER BY revenue DESC`);
 
     res.json(rows.map(r => ({
       ...r,

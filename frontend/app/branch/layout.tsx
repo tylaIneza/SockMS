@@ -10,7 +10,7 @@ export default function BranchLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     const token = getToken(); const user = getUser();
     if (!token || !user) { router.push('/login'); return; }
-    if (user.role === 'super_admin') { router.push('/admin'); return; }
+    if (['super_admin', 'manager'].includes(user.role)) { router.push('/admin'); return; }
     setOk(true);
   }, []);
   if (!ok) return <div className="min-h-screen bg-gray-50" />;

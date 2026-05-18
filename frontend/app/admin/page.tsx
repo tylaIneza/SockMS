@@ -5,7 +5,7 @@ import { fmt } from '@/lib/auth';
 import {
   ChevronLeft, ChevronRight, Download, AlertTriangle,
   TrendingUp, TrendingDown, DollarSign, ShoppingBag,
-  Calendar, Loader2, GitBranch, Package, BarChart3,
+  Calendar, Loader2, Users, Package, BarChart3,
   ArrowUpRight, ArrowDownRight, Zap,
 } from 'lucide-react';
 import {
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
   useEffect(()=>{ setMounted(true); },[]);
   useEffect(()=>{ load(date); },[date]);
 
-  const branchNames: string[] = (data?.branches||[]).map((b:any)=>b.branch_name);
+  const userNames: string[] = (data?.users||[]).map((b:any)=>b.user_name);
 
   const pivot: any[] = (() => {
     if (!data?.products?.length) return [];
@@ -112,18 +112,18 @@ export default function AdminDashboard() {
     for (const row of data.products) {
       if (!map[row.product_name])
         map[row.product_name] = { name:row.product_name, cat:row.category_name, br:{} };
-      map[row.product_name].br[row.branch_name] = { qty:+row.qty_sold, rev:+row.revenue };
+      map[row.product_name].br[row.user_name] = { qty:+row.qty_sold, rev:+row.revenue };
     }
     return Object.values(map).map(p=>({
       ...p,
-      qty: branchNames.reduce((s,b)=>s+(p.br[b]?.qty||0),0),
-      rev: branchNames.reduce((s,b)=>s+(p.br[b]?.rev||0),0),
+      qty: userNames.reduce((s,b)=>s+(p.br[b]?.qty||0),0),
+      rev: userNames.reduce((s,b)=>s+(p.br[b]?.rev||0),0),
     })).sort((a,b)=>b.rev-a.rev);
   })();
 
-  const totalRev    = (data?.branches||[]).reduce((s:number,b:any)=>s+Number(b.revenue),0);
-  const totalTxns   = (data?.branches||[]).reduce((s:number,b:any)=>s+Number(b.sales_count),0);
-  const totalProfit = (data?.branches||[]).reduce((s:number,b:any)=>s+Number(b.net_profit),0);
+  const totalRev    = (data?.users||[]).reduce((s:number,b:any)=>s+Number(b.revenue),0);
+  const totalTxns   = (data?.users||[]).reduce((s:number,b:any)=>s+Number(b.sales_count),0);
+  const totalProfit = (data?.users||[]).reduce((s:number,b:any)=>s+Number(b.net_profit),0);
   const totalQty    = pivot.reduce((s,p)=>s+p.qty,0);
   const maxRev      = Math.max(...pivot.map(p=>p.rev), 1);
 
@@ -139,15 +139,15 @@ export default function AdminDashboard() {
       doc.text(fmtShort(data.date), 14, 26);
       autoTable(doc, {
         startY:30,
-        head:[['Branch','Revenue','Gross Profit','Expenses','Net Profit','Sales']],
-        body:data.branches.map((b:any)=>[b.branch_name,fmt(b.revenue),fmt(b.gross_profit),fmt(b.expenses),fmt(b.net_profit),b.sales_count]),
+        head:[['User','Revenue','Gross Profit','Expenses','Net Profit','Sales']],
+        body:data.users.map((b:any)=>[b.user_name,fmt(b.revenue),fmt(b.gross_profit),fmt(b.expenses),fmt(b.net_profit),b.sales_count]),
         headStyles:{fillColor:[67,56,202]},
       });
       const y1 = (doc as any).lastAutoTable.finalY+8;
       autoTable(doc, {
         startY:y1,
-        head:[['#','Product','Cat',...branchNames.flatMap(b=>[b+' Qty',b+' Rev']),'Total Qty','Total Rev']],
-        body:pivot.map((p,i)=>[i+1,p.name,p.cat,...branchNames.flatMap(b=>[p.br[b]?.qty||'—',p.br[b]?fmt(p.br[b].rev):'—']),p.qty,fmt(p.rev)]),
+        head:[['#','Product','Cat',...userNames.flatMap(b=>[b+' Qty',b+' Rev']),'Total Qty','Total Rev']],
+        body:pivot.map((p,i)=>[i+1,p.name,p.cat,...userNames.flatMap(b=>[p.br[b]?.qty||'—',p.br[b]?fmt(p.br[b].rev):'—']),p.qty,fmt(p.rev)]),
         headStyles:{fillColor:[16,185,129]}, bodyStyles:{fontSize:8},
       });
       doc.save(`Report-${data.date}.pdf`);
@@ -225,10 +225,10 @@ export default function AdminDashboard() {
               icon={ShoppingBag} accent="#10b981" />
             <KPI label="Net Profit" value={fmt(totalProfit)} sub={totalProfit>=0?'Positive performance':'Review expenses'}
               icon={totalProfit>=0?TrendingUp:TrendingDown} accent={totalProfit>=0?'#06b6d4':'#f97316'} positive={totalProfit>=0} />
-            <KPI label="Active Branches"
-              value={`${data.branches.filter((b:any)=>Number(b.sales_count)>0).length} / ${data.branches.length}`}
-              sub="branches made sales today"
-              icon={GitBranch} accent="#f59e0b" />
+            <KPI label="Active Users"
+              value={`${data.users.filter((b:any)=>Number(b.sales_count)>0).length} / ${data.users.length}`}
+              sub="users made sales today"
+              icon={Users} accent="#f59e0b" />
           </div>
 
           {/* ══════════ CHART + BRANCH TABLE ══════════ */}
@@ -238,7 +238,7 @@ export default function AdminDashboard() {
             <div className="xl:col-span-2 rounded-2xl p-5" style={{background:C.card,border:`1px solid ${C.border}`}}>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-sm font-bold text-white">Branch Comparison</h2>
+                  <h2 className="text-sm font-bold text-white">User Comparison</h2>
                   <p className="text-xs mt-0.5" style={{color:C.muted}}>{fmtShort(date)}</p>
                 </div>
                 <div className="flex items-center gap-3 text-[11px]" style={{color:C.muted}}>
@@ -251,9 +251,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={data.branches} barGap={3} barCategoryGap="28%">
+                <BarChart data={data.users} barGap={3} barCategoryGap="28%">
                   <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" vertical={false}/>
-                  <XAxis dataKey="branch_name" tick={{fontSize:11,fill:C.muted}} axisLine={false} tickLine={false}/>
+                  <XAxis dataKey="user_name" tick={{fontSize:11,fill:C.muted}} axisLine={false} tickLine={false}/>
                   <YAxis tick={{fontSize:10,fill:C.muted}} axisLine={false} tickLine={false}
                     tickFormatter={v=>`${(v/1000).toFixed(0)}k`}/>
                   <Tooltip content={<Tip/>} cursor={{fill:'rgba(255,255,255,0.03)',radius:4}}/>
@@ -267,19 +267,19 @@ export default function AdminDashboard() {
             {/* branch performance table */}
             <div className="rounded-2xl overflow-hidden" style={{background:C.card,border:`1px solid ${C.border}`}}>
               <div className="px-5 py-4" style={{borderBottom:`1px solid ${C.border}`}}>
-                <h2 className="text-sm font-bold text-white">Branch Performance</h2>
+                <h2 className="text-sm font-bold text-white">User Performance</h2>
                 <p className="text-xs mt-0.5" style={{color:C.muted}}>Today's breakdown</p>
               </div>
               <div className="divide-y" style={{'--tw-divide-opacity':1} as any}>
-                {data.branches.map((b:any,i:number)=>{
+                {data.users.map((b:any,i:number)=>{
                   const isPos = Number(b.net_profit)>=0;
                   const col   = BRANCH_COLORS[i];
                   return (
-                    <div key={b.branch_id} className="px-5 py-3.5">
+                    <div key={b.user_id} className="px-5 py-3.5">
                       <div className="flex items-center justify-between mb-2.5">
                         <div className="flex items-center gap-2">
                           <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:col,boxShadow:`0 0 6px ${col}`}}/>
-                          <span className="text-sm font-bold text-white">{b.branch_name}</span>
+                          <span className="text-sm font-bold text-white">{b.user_name}</span>
                         </div>
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
                           style={{background:`${col}18`,color:col}}>{b.sales_count} sales</span>
@@ -323,7 +323,7 @@ export default function AdminDashboard() {
                   <thead>
                     <tr style={{borderBottom:`1px solid ${C.border}`}}>
                       {['#','Product','Category',
-                        ...branchNames.flatMap(b=>[b+' Qty',b+' Rev']),
+                        ...userNames.flatMap(b=>[b+' Qty',b+' Rev']),
                         'Total Qty','Total Revenue','Share'
                       ].map((h,i)=>(
                         <th key={i} className={`px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider ${i>2?'text-right':''}`}
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
                           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
                             style={{background:'rgba(99,102,241,0.12)',color:'#818cf8'}}>{p.cat}</span>
                         </td>
-                        {branchNames.map(b=>(
+                        {userNames.map(b=>(
                           <React.Fragment key={b}>
                             <td className="px-4 py-2.5 text-right text-xs" style={{color:C.muted}}>
                               {p.br[b]?.qty ?? <span style={{color:C.dim}}>—</span>}
@@ -377,8 +377,8 @@ export default function AdminDashboard() {
                   <tfoot>
                     <tr style={{background:'rgba(99,102,241,0.06)',borderTop:'1px solid rgba(99,102,241,0.2)'}}>
                       <td className="px-4 py-2.5 font-black text-indigo-300 text-xs" colSpan={3}>TOTALS</td>
-                      {branchNames.map(b=>{
-                        const br  = data.branches.find((x:any)=>x.branch_name===b);
+                      {userNames.map(b=>{
+                        const br  = data.users.find((x:any)=>x.user_name===b);
                         const qty = pivot.reduce((s,p)=>s+(p.br[b]?.qty||0),0);
                         return (
                           <React.Fragment key={b}>

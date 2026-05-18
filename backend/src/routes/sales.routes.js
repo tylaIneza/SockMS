@@ -2,21 +2,21 @@ const router = require('express').Router();
 const { v4: uuid } = require('uuid');
 const { many, one, run, transaction } = require('../config/db');
 const { auth, branchGuard } = require('../middleware/auth');
+const { audit } = require('../utils/audit');
 
 router.get('/', auth, branchGuard, async (req, res) => {
   try {
-    const { branch_id, start_date, end_date, limit = 100 } = req.query;
+    const { user_id, start_date, end_date, limit = 100 } = req.query;
     let sql = `
-      SELECT s.*, p.name AS product_name, b.name AS branch_name, u.name AS sold_by_name,
+      SELECT s.*, p.name AS product_name, u.name AS sold_by_name,
              c.name AS category_name
       FROM sales s
       JOIN products p ON p.id = s.product_id
-      JOIN branches b ON b.id = s.branch_id
       JOIN users u ON u.id = s.user_id
       LEFT JOIN categories c ON c.id = p.category_id
       WHERE 1=1`;
     const params = [];
-    if (branch_id)  { sql += ' AND s.branch_id = ?'; params.push(branch_id); }
+    if (user_id)    { sql += ' AND s.user_id = ?'; params.push(user_id); }
     if (start_date) { sql += ' AND DATE(s.sold_at) >= ?'; params.push(start_date); }
     if (end_date)   { sql += ' AND DATE(s.sold_at) <= ?'; params.push(end_date); }
     sql += ` ORDER BY s.sold_at DESC LIMIT ${parseInt(limit)}`;
@@ -27,9 +27,8 @@ router.get('/', auth, branchGuard, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     const { product_id, quantity, selling_price, note } = req.body;
-    const branch_id = req.user.role === 'branch_user' ? req.user.branch_id : req.body.branch_id;
 
-    if (!product_id || !quantity || !selling_price || !branch_id) {
+    if (!product_id || !quantity || !selling_price) {
       return res.status(400).json({ message: 'product_id, quantity, selling_price required' });
     }
     if (quantity <= 0) return res.status(400).json({ message: 'Quantity must be > 0' });
@@ -62,16 +61,19 @@ router.post('/', auth, async (req, res) => {
       const saleId = uuid();
 
       await conn.execute(
-        `INSERT INTO sales (id, branch_id, product_id, user_id, quantity, selling_price,
+        `INSERT INTO sales (id, user_id, product_id, quantity, selling_price,
                             buying_price, total_revenue, profit, note)
-         VALUES (?,?,?,?,?,?,?,?,?,?)`,
-        [saleId, branch_id, product_id, req.user.id, quantity, selling_price,
+         VALUES (?,?,?,?,?,?,?,?,?)`,
+        [saleId, req.user.id, product_id, quantity, selling_price,
          product.buying_price, total_revenue, profit, note || null],
       );
 
-      return { id: saleId, total_revenue, profit };
+      return { id: saleId, total_revenue, profit, product_name: product.name };
     });
 
+    await audit(req.user, 'sale.create', 'sale', sale.id, {
+      product: sale.product_name, quantity, selling_price, total_revenue: sale.total_revenue,
+    });
     res.status(201).json(sale);
   } catch (err) {
     const status = err.message.includes('Insufficient') ? 400 : 500;

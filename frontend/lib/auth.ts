@@ -1,7 +1,6 @@
 export interface User {
-  id: string; name: string; email: string;
-  role: 'super_admin' | 'branch_user';
-  branch_id: string | null; branch_name?: string;
+  id: string; name: string; phone: string;
+  role: 'super_admin' | 'manager' | 'branch_user';
 }
 
 export const getToken  = () => typeof window !== 'undefined' ? localStorage.getItem('token')          : null;

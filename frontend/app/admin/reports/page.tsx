@@ -7,8 +7,8 @@ import { Download } from 'lucide-react';
 
 export default function AdminReportsPage() {
   const [weekly, setWeekly]         = useState<any>(null);
-  const [branchReport, setBranchReport] = useState<any[]>([]);
-  const [tab, setTab]               = useState<'weekly' | 'branches'>('weekly');
+  const [userReport, setUserReport] = useState<any[]>([]);
+  const [tab, setTab]               = useState<'weekly' | 'users'>('weekly');
   const [weekOffset, setWeekOffset] = useState(0);
   const [loading, setLoading]       = useState(true);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function AdminReportsPage() {
   };
 
   useEffect(() => {
-    api.get('/reports/branches').then(r => setBranchReport(r.data));
+    api.get('/reports/users').then(r => setUserReport(r.data));
     loadWeekly(0);
   }, []);
 
@@ -94,8 +94,8 @@ export default function AdminReportsPage() {
         doc.text('Expense Breakdown', 14, y3);
         autoTable(doc, {
           startY: y3 + 4,
-          head: [['Description', 'Branch', 'Amount']],
-          body: weekly.expense_breakdown.map((e: any) => [e.description, e.branch_name, fmt(e.amount)]),
+          head: [['Description', 'User', 'Amount']],
+          body: weekly.expense_breakdown.map((e: any) => [e.description, e.user_name, fmt(e.amount)]),
           headStyles: { fillColor: [248, 113, 113] },
         });
       }
@@ -105,7 +105,7 @@ export default function AdminReportsPage() {
     finally { setPdfLoading(false); }
   };
 
-  const tabs = [{ id: 'weekly', label: 'Weekly Report' }, { id: 'branches', label: 'Branch Comparison' }] as const;
+  const tabs = [{ id: 'weekly', label: 'Weekly Report' }, { id: 'users', label: 'User Comparison' }] as const;
 
   return (
     <div className="p-6 space-y-6">
@@ -243,12 +243,12 @@ export default function AdminReportsPage() {
                 <div className="card p-5">
                   <h2 className="font-semibold text-white mb-4">Expense Breakdown</h2>
                   <table className="w-full text-sm">
-                    <thead><tr className="border-b"><th className="th pl-0">Description</th><th className="th">Branch</th><th className="th text-right pr-0">Amount</th></tr></thead>
+                    <thead><tr className="border-b"><th className="th pl-0">Description</th><th className="th">User</th><th className="th text-right pr-0">Amount</th></tr></thead>
                     <tbody>
                       {weekly.expense_breakdown.map((ex: any, i: number) => (
                         <tr key={i} className="border-b border-white/5">
                           <td className="td pl-0">{ex.description}</td>
-                          <td className="td text-slate-400">{ex.branch_name}</td>
+                          <td className="td text-slate-400">{ex.user_name}</td>
                           <td className="td text-right pr-0 text-red-600 font-medium">{fmt(ex.amount)}</td>
                         </tr>
                       ))}
@@ -261,12 +261,12 @@ export default function AdminReportsPage() {
         </div>
       )}
 
-      {tab === 'branches' && (
+      {tab === 'users' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {branchReport.map((b: any) => (
-              <div key={b.branch_id} className="card p-5 space-y-3">
-                <h3 className="font-semibold text-white">{b.branch_name}</h3>
+            {userReport.map((b: any) => (
+              <div key={b.user_id} className="card p-5 space-y-3">
+                <h3 className="font-semibold text-white">{b.user_name}</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-slate-400">Revenue</span><span className="font-medium text-indigo-400">{fmt(b.revenue)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-400">Gross Profit</span><span className="font-medium text-emerald-400">{fmt(b.gross_profit)}</span></div>
@@ -281,13 +281,13 @@ export default function AdminReportsPage() {
             ))}
           </div>
 
-          {branchReport.length > 0 && (
+          {userReport.length > 0 && (
             <div className="card p-5">
-              <h2 className="font-semibold text-white mb-4">Branch Revenue Comparison (All Time)</h2>
+              <h2 className="font-semibold text-white mb-4">User Revenue Comparison (All Time)</h2>
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={branchReport}>
+                <BarChart data={userReport}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="branch_name" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }} />
+                  <XAxis dataKey="user_name" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }} />
                   <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v: any) => fmt(v)} />
                   <Legend />

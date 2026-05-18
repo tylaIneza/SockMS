@@ -3,31 +3,27 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { Plus, Pencil, Trash2, X, Shield, User, AlertTriangle } from 'lucide-react';
 
-const EMPTY = { name: '', phone: '', password: '', role: 'branch_user', branch_id: '' };
+const EMPTY = { name: '', phone: '', password: '', role: 'branch_user' };
 
 export default function UsersPage() {
-  const [users, setUsers]           = useState<any[]>([]);
-  const [branches, setBranches]     = useState<any[]>([]);
-  const [modal, setModal]           = useState(false);
-  const [editing, setEditing]       = useState<any>(null);
-  const [form, setForm]             = useState({ ...EMPTY });
-  const [saving, setSaving]         = useState(false);
-  const [error, setError]           = useState('');
+  const [users, setUsers]       = useState<any[]>([]);
+  const [modal, setModal]       = useState(false);
+  const [editing, setEditing]   = useState<any>(null);
+  const [form, setForm]         = useState({ ...EMPTY });
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState('');
 
-  const [delModal, setDelModal]     = useState<{ open: boolean; user: any }>({ open: false, user: null });
-  const [delError, setDelError]     = useState('');
-  const [deleting, setDeleting]     = useState(false);
+  const [delModal, setDelModal] = useState<{ open: boolean; user: any }>({ open: false, user: null });
+  const [delError, setDelError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
-  const load = () => {
-    api.get('/users').then(r => setUsers(r.data));
-    api.get('/branches').then(r => setBranches(r.data));
-  };
+  const load = () => api.get('/users').then(r => setUsers(r.data));
   useEffect(() => { load(); }, []);
 
   const openNew  = () => { setEditing(null); setForm({ ...EMPTY }); setError(''); setModal(true); };
   const openEdit = (u: any) => {
     setEditing(u);
-    setForm({ name: u.name, phone: u.phone, password: '', role: u.role, branch_id: u.branch_id || '' });
+    setForm({ name: u.name, phone: u.phone, password: '', role: u.role });
     setError(''); setModal(true);
   };
 
@@ -61,6 +57,12 @@ export default function UsersPage() {
     finally { setDeleting(false); }
   };
 
+  const roleBadge = (role: string) => {
+    if (role === 'super_admin') return <span className="badge-purple flex items-center gap-1 w-fit"><Shield className="w-3 h-3" /> Admin</span>;
+    if (role === 'manager')     return <span className="badge-green  flex items-center gap-1 w-fit"><Shield className="w-3 h-3" /> Manager</span>;
+    return <span className="badge-blue flex items-center gap-1 w-fit"><User className="w-3 h-3" /> User</span>;
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -75,9 +77,11 @@ export default function UsersPage() {
         <table className="w-full">
           <thead className="thead-dark">
             <tr>
-              <th className="th">Name</th><th className="th">Phone</th>
-              <th className="th">Role</th><th className="th">Branch</th>
-              <th className="th">Status</th><th className="th"></th>
+              <th className="th">Name</th>
+              <th className="th">Phone</th>
+              <th className="th">Role</th>
+              <th className="th">Status</th>
+              <th className="th"></th>
             </tr>
           </thead>
           <tbody className="divide-dark">
@@ -85,19 +89,17 @@ export default function UsersPage() {
               <tr key={u.id} className="hover:bg-white/5">
                 <td className="td">
                   <div className="flex items-center gap-2">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${u.role === 'super_admin' ? 'bg-purple-500/15 text-purple-300' : 'bg-blue-500/15 text-blue-300'}`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
+                      ${u.role === 'super_admin' ? 'bg-purple-500/15 text-purple-300'
+                      : u.role === 'manager'     ? 'bg-emerald-500/15 text-emerald-300'
+                                                 : 'bg-blue-500/15 text-blue-300'}`}>
                       {u.name[0]}
                     </div>
                     <span className="font-medium">{u.name}</span>
                   </div>
                 </td>
                 <td className="td text-slate-400">{u.phone}</td>
-                <td className="td">
-                  {u.role === 'super_admin'
-                    ? <span className="badge-purple flex items-center gap-1 w-fit"><Shield className="w-3 h-3" /> Admin</span>
-                    : <span className="badge-blue flex items-center gap-1 w-fit"><User className="w-3 h-3" /> Branch User</span>}
-                </td>
-                <td className="td text-slate-400">{u.branch_name || '—'}</td>
+                <td className="td">{roleBadge(u.role)}</td>
                 <td className="td"><span className={u.is_active ? 'badge-green' : 'badge-red'}>{u.is_active ? 'Active' : 'Inactive'}</span></td>
                 <td className="td">
                   <div className="flex items-center gap-1 justify-end">
@@ -128,21 +130,13 @@ export default function UsersPage() {
                 <div><label className="label">Phone Number</label><input type="tel" className="input" placeholder="07XXXXXXXX" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} required /></div>
               </div>
               <div><label className="label">Password {editing && '(leave blank to keep)'}</label><input type="password" className="input" value={form.password} onChange={e => setForm({...form, password: e.target.value})} {...(!editing && { required: true })} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Role</label>
-                  <select className="input" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-                    <option value="branch_user">Branch User</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Branch</label>
-                  <select className="input" value={form.branch_id} onChange={e => setForm({...form, branch_id: e.target.value})}>
-                    <option value="">None</option>
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </div>
+              <div>
+                <label className="label">Role</label>
+                <select className="input" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
+                  <option value="branch_user">User</option>
+                  <option value="manager">Manager</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModal(false)} className="btn-ghost flex-1 justify-center">Cancel</button>

@@ -15,22 +15,28 @@ const auth = (req, res, next) => {
 };
 
 const adminOnly = (req, res, next) => {
-  if (req.user?.role !== 'super_admin') {
+  if (!['super_admin', 'manager'].includes(req.user?.role)) {
     return res.status(403).json({ message: 'Admin access required' });
   }
   next();
 };
 
-const branchGuard = (req, res, next) => {
-  if (req.user?.role === 'super_admin') return next();
-  const bid = req.query.branch_id || req.body.branch_id || req.params.branch_id;
-  if (bid && bid !== req.user.branch_id) {
-    return res.status(403).json({ message: 'Access denied to this branch' });
-  }
-  if (req.user.role === 'branch_user') {
-    req.query.branch_id = req.user.branch_id;
+const managerOrAdmin = (req, res, next) => {
+  if (!['super_admin', 'manager'].includes(req.user?.role)) {
+    return res.status(403).json({ message: 'Manager or admin access required' });
   }
   next();
 };
 
-module.exports = { auth, adminOnly, branchGuard };
+// manager and super_admin see all data; branch_user scoped to their own user_id
+const branchGuard = (req, res, next) => {
+  if (['super_admin', 'manager'].includes(req.user?.role)) return next();
+  const uid = req.query.user_id;
+  if (uid && uid !== req.user.id) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  req.query.user_id = req.user.id;
+  next();
+};
+
+module.exports = { auth, adminOnly, managerOrAdmin, branchGuard };
