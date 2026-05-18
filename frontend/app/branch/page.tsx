@@ -69,6 +69,8 @@ export default function BranchDashboard() {
   const [secAgo, setSecAgo]       = useState(0);
   const user = getUser();
 
+  const refreshingRef = useRef(false);
+
   const fetchData = useCallback(async () => {
     const r = await api.get('/reports/dashboard');
     setData(r.data);
@@ -77,16 +79,18 @@ export default function BranchDashboard() {
   }, []);
 
   const silentRefresh = useCallback(async () => {
-    if (refreshing) return;
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
     setRefreshing(true);
     try { await fetchData(); } catch (_) {}
-    finally { setRefreshing(false); }
-  }, [fetchData, refreshing]);
+    finally { refreshingRef.current = false; setRefreshing(false); }
+  }, [fetchData]);
 
   useEffect(() => {
     setMounted(true);
     fetchData().catch(() => {}).finally(() => setLoading(false));
-    const t = setInterval(() => silentRefresh(), 20_000);
+    // stable interval — deps array empty so it never restarts
+    const t = setInterval(silentRefresh, 20_000);
     return () => clearInterval(t);
   }, []);
 

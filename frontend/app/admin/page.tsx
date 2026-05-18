@@ -97,6 +97,7 @@ export default function AdminDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [secAgo, setSecAgo]       = useState(0);
   const dateRef                   = useRef(date);
+  const refreshingRef             = useRef(false);
   dateRef.current                 = date;
 
   const fetchData = useCallback(async (d: string) => {
@@ -116,24 +117,25 @@ export default function AdminDashboard() {
     fetchData(d).catch(() => {}).finally(() => setLoading(false));
   }, [fetchData]);
 
-  // silent background refresh (no spinner)
+  // silent background refresh — uses ref to avoid interval resetting on every render
   const silentRefresh = useCallback(async () => {
-    if (refreshing) return;
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
     setRefreshing(true);
     try { await fetchData(dateRef.current); } catch (_) {}
-    finally { setRefreshing(false); }
-  }, [fetchData, refreshing]);
+    finally { refreshingRef.current = false; setRefreshing(false); }
+  }, [fetchData]);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { load(date); }, [date]);
 
-  // auto-refresh every 20s when viewing today
+  // auto-refresh every 20s when viewing today — stable interval, no restarts
   useEffect(() => {
     const t = setInterval(() => {
       if (dateRef.current === today()) silentRefresh();
     }, 20_000);
     return () => clearInterval(t);
-  }, [silentRefresh]);
+  }, []);
 
   // "X seconds ago" counter
   useEffect(() => {
