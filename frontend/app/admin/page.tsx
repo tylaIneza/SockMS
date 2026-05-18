@@ -90,6 +90,7 @@ export default function AdminDashboard() {
   const [date, setDate]           = useState(today());
   const [data, setData]           = useState<any>(null);
   const [lowStock, setLowStock]   = useState<any[]>([]);
+  const [sales, setSales]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pdfLoad, setPdfLoad]     = useState(false);
@@ -101,12 +102,14 @@ export default function AdminDashboard() {
   dateRef.current                 = date;
 
   const fetchData = useCallback(async (d: string) => {
-    const [daily, dash] = await Promise.all([
+    const [daily, dash, salesRes] = await Promise.all([
       api.get(`/reports/daily?date=${d}`),
       api.get('/reports/dashboard'),
+      api.get(`/sales?start_date=${d}&end_date=${d}&limit=200`),
     ]);
     setData(daily.data);
     setLowStock(dash.data.low_stock || []);
+    setSales(salesRes.data);
     setLastUpdated(new Date());
     setSecAgo(0);
   }, []);
@@ -471,6 +474,79 @@ export default function AdminDashboard() {
               <p className="text-xs" style={{color:C.muted}}>No transactions found for {fmtShort(date)}</p>
             </div>
           )}
+
+          {/* ══════════ ALL SALES FEED ══════════ */}
+          <div className="rounded-2xl overflow-hidden" style={{background:C.card,border:`1px solid ${C.border}`}}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{borderBottom:`1px solid ${C.border}`}}>
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-indigo-400"/>
+                <h2 className="text-sm font-bold text-white">All Sales</h2>
+                <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
+                  style={{background:'rgba(99,102,241,0.15)',color:'#818cf8'}}>{sales.length} transactions</span>
+                {date === today() && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{background:'rgba(52,211,153,0.12)',color:'#34d399'}}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping-slow"/>
+                    LIVE
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-semibold" style={{color:C.muted}}>{fmtShort(date)}</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr style={{borderBottom:`1px solid ${C.border}`}}>
+                    {['Time','Sold By','Product','Category','Qty','Price','Revenue','Profit'].map((h,i)=>(
+                      <th key={i} className={`px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider ${i>=4?'text-right':''}`}
+                        style={{color:C.muted,background:'rgba(255,255,255,0.02)'}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sales.map((s:any,i:number)=>(
+                    <tr key={s.id||i}
+                      style={{borderBottom:`1px solid rgba(255,255,255,0.04)`}}
+                      onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.03)')}
+                      onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
+                      className="transition-colors">
+                      <td className="px-4 py-3 text-xs whitespace-nowrap" style={{color:C.muted}}>
+                        {new Date(s.sold_at).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0"
+                            style={{background:`linear-gradient(135deg,${BRANCH_COLORS[data.users?.findIndex((u:any)=>u.user_name===s.sold_by_name)%BRANCH_COLORS.length]||'#6366f1'},${BRANCH_COLORS[(data.users?.findIndex((u:any)=>u.user_name===s.sold_by_name)+1)%BRANCH_COLORS.length]||'#8b5cf6'})`}}>
+                            {s.sold_by_name?.[0]?.toUpperCase()}
+                          </div>
+                          <span className="text-sm font-semibold text-white whitespace-nowrap">{s.sold_by_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-white font-medium max-w-[180px] truncate">{s.product_name}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{background:'rgba(99,102,241,0.12)',color:'#818cf8'}}>{s.category_name||'—'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-bold text-white">{s.quantity}</td>
+                      <td className="px-4 py-3 text-right text-sm" style={{color:C.muted}}>{fmt(s.selling_price)}</td>
+                      <td className="px-4 py-3 text-right text-sm font-bold" style={{color:'#818cf8'}}>{fmt(s.total_revenue)}</td>
+                      <td className="px-4 py-3 text-right text-sm font-bold" style={{color: Number(s.profit)>=0?'#34d399':'#f87171'}}>{fmt(s.profit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {sales.length===0 && (
+                <div className="flex flex-col items-center py-12 gap-3">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                    style={{background:'rgba(99,102,241,0.08)'}}>
+                    <ShoppingBag className="w-5 h-5 text-indigo-400"/>
+                  </div>
+                  <p className="text-sm font-semibold text-white">No sales yet</p>
+                  <p className="text-xs" style={{color:C.muted}}>Transactions will appear here as users sell</p>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* ══════════ LOW STOCK STRIP ══════════ */}
           {lowStock.length>0 && (
