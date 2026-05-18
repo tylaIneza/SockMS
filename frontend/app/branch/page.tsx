@@ -1,10 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/api';
 import { fmt, getUser } from '@/lib/auth';
 import {
   DollarSign, TrendingUp, TrendingDown, ShoppingBag,
-  AlertTriangle, Package, Loader2,
+  AlertTriangle, Package, Loader2, RefreshCw,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -61,18 +61,43 @@ const DarkTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function BranchDashboard() {
-  const [data, setData]       = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const [data, setData]           = useState<any>(null);
+  const [loading, setLoading]     = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [mounted, setMounted]     = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [secAgo, setSecAgo]       = useState(0);
   const user = getUser();
+
+  const fetchData = useCallback(async () => {
+    const r = await api.get('/reports/dashboard');
+    setData(r.data);
+    setLastUpdated(new Date());
+    setSecAgo(0);
+  }, []);
+
+  const silentRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try { await fetchData(); } catch (_) {}
+    finally { setRefreshing(false); }
+  }, [fetchData, refreshing]);
 
   useEffect(() => {
     setMounted(true);
-    api.get('/reports/dashboard')
-      .then(r => setData(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    fetchData().catch(() => {}).finally(() => setLoading(false));
+    const t = setInterval(() => silentRefresh(), 20_000);
+    return () => clearInterval(t);
   }, []);
+
+  // "X seconds ago" counter
+  useEffect(() => {
+    if (!lastUpdated) return;
+    const t = setInterval(() => {
+      setSecAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [lastUpdated]);
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-3"
@@ -106,10 +131,23 @@ export default function BranchDashboard() {
               {new Date().toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl"
-            style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)' }}>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold text-emerald-300">Branch online</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+              style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping-slow" />
+              <span className="text-xs font-semibold text-emerald-300">Live</span>
+            </div>
+            {lastUpdated && (
+              <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                Updated {secAgo < 5 ? 'just now' : `${secAgo}s ago`}
+              </span>
+            )}
+            <button onClick={silentRefresh} disabled={refreshing}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all disabled:opacity-40"
+              style={{ color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}>
+              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
         </div>
       </div>

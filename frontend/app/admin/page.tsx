@@ -1,12 +1,12 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/api';
 import { fmt } from '@/lib/auth';
 import {
   ChevronLeft, ChevronRight, Download, AlertTriangle,
   TrendingUp, TrendingDown, DollarSign, ShoppingBag,
   Calendar, Loader2, Users, Package, BarChart3,
-  ArrowUpRight, ArrowDownRight, Zap,
+  ArrowUpRight, ArrowDownRight, Zap, RefreshCw,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -87,22 +87,62 @@ const Tip = ({ active, payload, label }: any) => {
 
 /* ─── Main ───────────────────────────────────────────────────────── */
 export default function AdminDashboard() {
-  const [date, setDate]         = useState(today());
-  const [data, setData]         = useState<any>(null);
-  const [lowStock, setLowStock] = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [pdfLoad, setPdfLoad]   = useState(false);
-  const [mounted, setMounted]   = useState(false);
+  const [date, setDate]           = useState(today());
+  const [data, setData]           = useState<any>(null);
+  const [lowStock, setLowStock]   = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pdfLoad, setPdfLoad]     = useState(false);
+  const [mounted, setMounted]     = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [secAgo, setSecAgo]       = useState(0);
+  const dateRef                   = useRef(date);
+  dateRef.current                 = date;
 
+  const fetchData = useCallback(async (d: string) => {
+    const [daily, dash] = await Promise.all([
+      api.get(`/reports/daily?date=${d}`),
+      api.get('/reports/dashboard'),
+    ]);
+    setData(daily.data);
+    setLowStock(dash.data.low_stock || []);
+    setLastUpdated(new Date());
+    setSecAgo(0);
+  }, []);
+
+  // initial / date-change load (shows spinner)
   const load = useCallback((d: string) => {
     setLoading(true);
-    Promise.all([api.get(`/reports/daily?date=${d}`), api.get('/reports/dashboard')])
-      .then(([daily, dash]) => { setData(daily.data); setLowStock(dash.data.low_stock||[]); })
-      .catch(()=>{}).finally(()=>setLoading(false));
-  },[]);
+    fetchData(d).catch(() => {}).finally(() => setLoading(false));
+  }, [fetchData]);
 
-  useEffect(()=>{ setMounted(true); },[]);
-  useEffect(()=>{ load(date); },[date]);
+  // silent background refresh (no spinner)
+  const silentRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try { await fetchData(dateRef.current); } catch (_) {}
+    finally { setRefreshing(false); }
+  }, [fetchData, refreshing]);
+
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { load(date); }, [date]);
+
+  // auto-refresh every 20s when viewing today
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (dateRef.current === today()) silentRefresh();
+    }, 20_000);
+    return () => clearInterval(t);
+  }, [silentRefresh]);
+
+  // "X seconds ago" counter
+  useEffect(() => {
+    if (!lastUpdated) return;
+    const t = setInterval(() => {
+      setSecAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [lastUpdated]);
 
   const userNames: string[] = (data?.users||[]).map((b:any)=>b.user_name);
 
@@ -166,8 +206,22 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2 mb-0.5">
               <Zap className="w-3.5 h-3.5 text-indigo-400" />
               <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">Admin Dashboard</span>
+              {date === today() && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping-slow" />
+                  LIVE
+                </span>
+              )}
             </div>
-            <h1 className="text-xl font-black text-white leading-none">Daily Report</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-black text-white leading-none">Daily Report</h1>
+              {lastUpdated && (
+                <span className="text-[11px]" style={{ color: C.dim }}>
+                  Updated {secAgo < 5 ? 'just now' : `${secAgo}s ago`}
+                </span>
+              )}
+            </div>
           </div>
           {/* date nav */}
           <div className="flex items-center gap-1 rounded-xl px-1 py-1 ml-4"
@@ -198,6 +252,12 @@ export default function AdminDashboard() {
             className="h-8 px-3 text-xs font-semibold rounded-lg text-slate-400 disabled:opacity-30 transition-colors hover:text-white"
             style={{border:`1px solid ${C.border}`,background:'rgba(255,255,255,0.04)'}}>
             Today
+          </button>
+          <button onClick={silentRefresh} disabled={refreshing || loading}
+            className="h-8 px-3 text-xs font-semibold rounded-lg flex items-center gap-1.5 disabled:opacity-40 transition-colors hover:text-white"
+            style={{ border: `1px solid ${C.border}`, background: 'rgba(255,255,255,0.04)', color: C.muted }}>
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </button>
           <button onClick={downloadPdf} disabled={pdfLoad||loading||!data}
             className="h-8 px-4 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 disabled:opacity-40"
