@@ -59,7 +59,8 @@ export default function LoginPage() {
       const res = await api.post('/auth/login', { phone: form.phone, password: form.password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      router.push(res.data.user.role === 'super_admin' ? '/admin' : '/branch');
+      const role = res.data.user.role;
+      router.push(['super_admin', 'manager'].includes(role) ? '/admin' : '/branch');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid email or password.');
     } finally { setLoading(false); }
