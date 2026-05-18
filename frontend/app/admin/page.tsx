@@ -4,9 +4,9 @@ import api from '@/lib/api';
 import { fmt } from '@/lib/auth';
 import {
   ChevronLeft, ChevronRight, Download, AlertTriangle,
-  TrendingUp, TrendingDown, DollarSign, ShoppingBag,
+  DollarSign, ShoppingBag,
   Calendar, Loader2, Users, Package, BarChart3,
-  ArrowUpRight, ArrowDownRight, Zap, RefreshCw,
+  Zap, RefreshCw,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -23,7 +23,10 @@ const C = {
 
 const BRANCH_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6'];
 
-function today() { return new Date().toISOString().slice(0,10); }
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function fmtShort(d: string) {
   return new Date(d+'T00:00:00').toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
 }
@@ -33,13 +36,11 @@ function addDays(d: string, n: number) {
 }
 
 /* ─── Stat card ─────────────────────────────────────────────────── */
-function KPI({ label, value, sub, icon: Icon, accent, positive }: any) {
+function KPI({ label, value, sub, icon: Icon, accent }: any) {
   return (
     <div className="relative rounded-2xl p-5 overflow-hidden group cursor-default"
       style={{ background: C.card, border: `1px solid ${C.border}` }}>
-      {/* accent top bar */}
       <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: accent }} />
-      {/* glow bg */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none"
         style={{ background: `radial-gradient(ellipse at top, ${accent}12 0%, transparent 70%)` }} />
       <div className="relative">
@@ -48,14 +49,6 @@ function KPI({ label, value, sub, icon: Icon, accent, positive }: any) {
             style={{ background: `${accent}18` }}>
             <Icon className="w-4.5 h-4.5" style={{ width:18, height:18, color: accent }} />
           </div>
-          {positive !== undefined && (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold"
-              style={{ background: positive ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)',
-                       color: positive ? '#34d399' : '#f87171' }}>
-              {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-              {positive ? 'Profit' : 'Loss'}
-            </div>
-          )}
         </div>
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: C.muted }}>{label}</p>
         <p className="text-2xl font-black text-white leading-none tracking-tight">{value}</p>
@@ -166,11 +159,10 @@ export default function AdminDashboard() {
     })).sort((a,b)=>b.rev-a.rev);
   })();
 
-  const totalRev    = (data?.users||[]).reduce((s:number,b:any)=>s+Number(b.revenue),0);
-  const totalTxns   = (data?.users||[]).reduce((s:number,b:any)=>s+Number(b.sales_count),0);
-  const totalProfit = (data?.users||[]).reduce((s:number,b:any)=>s+Number(b.net_profit),0);
-  const totalQty    = pivot.reduce((s,p)=>s+p.qty,0);
-  const maxRev      = Math.max(...pivot.map(p=>p.rev), 1);
+  const totalRev  = (data?.users||[]).reduce((s:number,b:any)=>s+Number(b.revenue),0);
+  const totalTxns = (data?.users||[]).reduce((s:number,b:any)=>s+Number(b.sales_count),0);
+  const totalQty  = pivot.reduce((s,p)=>s+p.qty,0);
+  const maxRev    = Math.max(...pivot.map(p=>p.rev), 1);
 
   const downloadPdf = async () => {
     if (!data) return; setPdfLoad(true);
@@ -184,8 +176,8 @@ export default function AdminDashboard() {
       doc.text(fmtShort(data.date), 14, 26);
       autoTable(doc, {
         startY:30,
-        head:[['User','Revenue','Gross Profit','Expenses','Net Profit','Sales']],
-        body:data.users.map((b:any)=>[b.user_name,fmt(b.revenue),fmt(b.gross_profit),fmt(b.expenses),fmt(b.net_profit),b.sales_count]),
+        head:[['User','Revenue','Expenses','Sales']],
+        body:data.users.map((b:any)=>[b.user_name,fmt(b.revenue),fmt(b.expenses),b.sales_count]),
         headStyles:{fillColor:[67,56,202]},
       });
       const y1 = (doc as any).lastAutoTable.finalY+8;
@@ -283,13 +275,11 @@ export default function AdminDashboard() {
           style={{opacity:mounted?1:0,transform:mounted?'none':'translateY(12px)',transition:'opacity 0.5s 0.1s,transform 0.5s 0.1s'}}>
 
           {/* ══════════ KPI ROW ══════════ */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
             <KPI label="Total Revenue" value={fmt(totalRev)} sub={`${totalTxns} transactions today`}
               icon={DollarSign} accent="#6366f1" />
             <KPI label="Items Sold" value={totalQty.toLocaleString()} sub={`${pivot.length} products sold`}
               icon={ShoppingBag} accent="#10b981" />
-            <KPI label="Net Profit" value={fmt(totalProfit)} sub={totalProfit>=0?'Positive performance':'Review expenses'}
-              icon={totalProfit>=0?TrendingUp:TrendingDown} accent={totalProfit>=0?'#06b6d4':'#f97316'} positive={totalProfit>=0} />
             <KPI label="Active Users"
               value={`${data.users.filter((b:any)=>Number(b.sales_count)>0).length} / ${data.users.length}`}
               sub="users made sales today"
@@ -322,9 +312,8 @@ export default function AdminDashboard() {
                   <YAxis tick={{fontSize:10,fill:C.muted}} axisLine={false} tickLine={false}
                     tickFormatter={v=>`${(v/1000).toFixed(0)}k`}/>
                   <Tooltip content={<Tip/>} cursor={{fill:'rgba(255,255,255,0.03)',radius:4}}/>
-                  <Bar dataKey="revenue"      name="Revenue"      fill="#6366f1" radius={[4,4,0,0]}/>
-                  <Bar dataKey="gross_profit" name="Gross Profit" fill="#10b981" radius={[4,4,0,0]}/>
-                  <Bar dataKey="expenses"     name="Expenses"     fill="#f87171" radius={[4,4,0,0]}/>
+                  <Bar dataKey="revenue"  name="Revenue"  fill="#6366f1" radius={[4,4,0,0]}/>
+                  <Bar dataKey="expenses" name="Expenses" fill="#f87171" radius={[4,4,0,0]}/>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -337,8 +326,7 @@ export default function AdminDashboard() {
               </div>
               <div className="divide-y" style={{'--tw-divide-opacity':1} as any}>
                 {data.users.map((b:any,i:number)=>{
-                  const isPos = Number(b.net_profit)>=0;
-                  const col   = BRANCH_COLORS[i];
+                  const col = BRANCH_COLORS[i];
                   return (
                     <div key={b.user_id} className="px-5 py-3.5">
                       <div className="flex items-center justify-between mb-2.5">
@@ -351,10 +339,8 @@ export default function AdminDashboard() {
                       </div>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                         {[
-                          {k:'Revenue',    v:b.revenue,      c:'#818cf8'},
-                          {k:'Gross Profit',v:b.gross_profit,c:'#34d399'},
-                          {k:'Expenses',   v:b.expenses,     c:'#f87171'},
-                          {k:'Net Profit', v:b.net_profit,   c:isPos?'#38bdf8':'#fb923c'},
+                          {k:'Revenue',  v:b.revenue,  c:'#818cf8'},
+                          {k:'Expenses', v:b.expenses, c:'#f87171'},
                         ].map(({k,v,c})=>(
                           <div key={k} className="flex items-center justify-between">
                             <span style={{color:C.muted}}>{k}</span>
@@ -497,7 +483,7 @@ export default function AdminDashboard() {
               <table className="w-full">
                 <thead>
                   <tr style={{borderBottom:`1px solid ${C.border}`}}>
-                    {['Time','Sold By','Product','Category','Qty','Price','Revenue','Profit'].map((h,i)=>(
+                    {['Time','Sold By','Product','Category','Qty','Price','Revenue'].map((h,i)=>(
                       <th key={i} className={`px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider ${i>=4?'text-right':''}`}
                         style={{color:C.muted,background:'rgba(255,255,255,0.02)'}}>{h}</th>
                     ))}
@@ -530,7 +516,6 @@ export default function AdminDashboard() {
                       <td className="px-4 py-3 text-right text-sm font-bold text-white">{s.quantity}</td>
                       <td className="px-4 py-3 text-right text-sm" style={{color:C.muted}}>{fmt(s.selling_price)}</td>
                       <td className="px-4 py-3 text-right text-sm font-bold" style={{color:'#818cf8'}}>{fmt(s.total_revenue)}</td>
-                      <td className="px-4 py-3 text-right text-sm font-bold" style={{color: Number(s.profit)>=0?'#34d399':'#f87171'}}>{fmt(s.profit)}</td>
                     </tr>
                   ))}
                 </tbody>

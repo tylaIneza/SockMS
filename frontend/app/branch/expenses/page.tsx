@@ -4,6 +4,11 @@ import api from '@/lib/api';
 import { fmt, getUser } from '@/lib/auth';
 import { Plus, Check, X, Clock, Pencil } from 'lucide-react';
 
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 export default function BranchExpensesPage() {
   const user      = getUser();
   const isManager = user?.role === 'manager';
@@ -13,7 +18,7 @@ export default function BranchExpensesPage() {
   const [modal, setModal]         = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [editing, setEditing]     = useState<any>(null);
-  const [form, setForm]           = useState({ title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) });
+  const [form, setForm]           = useState({ title: '', amount: '', expense_date: localToday() });
   const [editForm, setEditForm]   = useState({ title: '', amount: '', expense_date: '' });
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
@@ -27,7 +32,7 @@ export default function BranchExpensesPage() {
     try {
       await api.post('/expenses', form);
       setModal(false);
-      setForm({ title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) });
+      setForm({ title: '', amount: '', expense_date: localToday() });
       load();
     } catch (e: any) { setError(e.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
@@ -70,7 +75,7 @@ export default function BranchExpensesPage() {
         </div>
         {/* Only branch_user can add expenses — managers are read-only + approve/reject */}
         {isUser && (
-          <button onClick={() => { setForm({ title: '', amount: '', expense_date: new Date().toISOString().slice(0, 10) }); setError(''); setModal(true); }} className="btn-primary">
+          <button onClick={() => { setForm({ title: '', amount: '', expense_date: localToday() }); setError(''); setModal(true); }} className="btn-primary">
             <Plus className="w-4 h-4" /> Add Expense
           </button>
         )}

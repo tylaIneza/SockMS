@@ -5,8 +5,8 @@ import { fmt } from '@/lib/auth';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function BranchReportsPage() {
-  const [weekly, setWeekly]   = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [weekly, setWeekly]         = useState<any>(null);
+  const [loading, setLoading]       = useState(true);
   const [weekOffset, setWeekOffset] = useState(0);
 
   const loadWeekly = (offset: number) => {
@@ -23,7 +23,7 @@ export default function BranchReportsPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Weekly Report</h1>
-        <p className="text-slate-400 text-sm mt-1">Your branch performance</p>
+        <p className="text-slate-400 text-sm mt-1">Your performance this week</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -31,19 +31,18 @@ export default function BranchReportsPage() {
         <span className="text-sm font-medium text-slate-200 min-w-40 text-center">
           {weekly ? `${weekly.period.start} – ${weekly.period.end}` : '...'}
         </span>
-        <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} className="btn-ghost px-3 disabled:opacity-40">Next Week →</button>
+        <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0}
+          className="btn-ghost px-3 disabled:opacity-40">Next Week →</button>
       </div>
 
       {loading ? (
         <div className="text-slate-500 animate-pulse">Loading report...</div>
       ) : weekly && (
         <>
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { label: 'Revenue',      value: fmt(weekly.summary.revenue),      cls: 'text-indigo-300' },
-              { label: 'Gross Profit', value: fmt(weekly.summary.gross_profit), cls: 'text-emerald-700' },
-              { label: 'Expenses',     value: fmt(weekly.summary.expenses),     cls: 'text-red-600' },
-              { label: 'Net Profit',   value: fmt(weekly.summary.net_profit),   cls: parseFloat(weekly.summary.net_profit) >= 0 ? 'text-blue-300' : 'text-orange-600' },
+              { label: 'Revenue',  value: fmt(weekly.summary.revenue),  cls: 'text-indigo-300' },
+              { label: 'Expenses', value: fmt(weekly.summary.expenses), cls: 'text-red-400' },
             ].map(c => (
               <div key={c.label} className="card p-4">
                 <p className="text-sm text-slate-400">{c.label}</p>
@@ -54,7 +53,7 @@ export default function BranchReportsPage() {
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-2 card p-5">
-              <h2 className="font-semibold text-white mb-4">Daily Revenue & Expenses</h2>
+              <h2 className="font-semibold text-white mb-4">Daily Revenue &amp; Expenses</h2>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={weekly.daily}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -92,12 +91,17 @@ export default function BranchReportsPage() {
             <div className="card p-5">
               <h2 className="font-semibold text-white mb-4">Expenses This Week</h2>
               <table className="w-full text-sm">
-                <thead><tr className="border-b"><th className="th pl-0">Description</th><th className="th text-right pr-0">Amount</th></tr></thead>
+                <thead>
+                  <tr className="border-b border-white/8">
+                    <th className="th pl-0">Description</th>
+                    <th className="th text-right pr-0">Amount</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {weekly.expense_breakdown.map((ex: any, i: number) => (
                     <tr key={i} className="border-b border-white/5">
                       <td className="td pl-0">{ex.description}</td>
-                      <td className="td text-right pr-0 text-red-600 font-medium">{fmt(ex.amount)}</td>
+                      <td className="td text-right pr-0 text-red-400 font-medium">{fmt(ex.amount)}</td>
                     </tr>
                   ))}
                 </tbody>

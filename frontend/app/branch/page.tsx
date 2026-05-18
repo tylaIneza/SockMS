@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/api';
 import { fmt, getUser } from '@/lib/auth';
 import {
-  DollarSign, TrendingUp, TrendingDown, ShoppingBag,
+  DollarSign, ShoppingBag,
   AlertTriangle, Package, Loader2, RefreshCw,
 } from 'lucide-react';
 import {
@@ -113,9 +113,7 @@ export default function BranchDashboard() {
 
   if (!data) return null;
 
-  const netProfit = parseFloat(data.this_week.profit) - parseFloat(data.this_week.expenses);
-  const isNetPos  = netProfit >= 0;
-  const txns      = data.today.sales_count;
+  const txns = data.today.sales_count;
 
   return (
     <div className="min-h-screen" style={{ background: BG }}>
@@ -160,7 +158,7 @@ export default function BranchDashboard() {
 
         {/* ── stat cards ── */}
         <div
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
           style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'none' : 'translateY(16px)', transition: 'opacity 0.6s ease 0.1s, transform 0.6s ease 0.1s' }}
         >
           <StatCard
@@ -174,18 +172,10 @@ export default function BranchDashboard() {
           <StatCard
             label="Week Revenue"
             value={fmt(data.this_week.revenue)}
-            sub={`Gross profit: ${fmt(data.this_week.profit)}`}
+            sub={`Expenses: ${fmt(data.this_week.expenses)}`}
             icon={ShoppingBag}
             gradient="linear-gradient(135deg,#06b6d4,#0284c7)"
             glow="0 0 24px rgba(6,182,212,0.45)"
-          />
-          <StatCard
-            label="Net Profit"
-            value={fmt(netProfit)}
-            sub={`After expenses: ${fmt(data.this_week.expenses)}`}
-            icon={isNetPos ? TrendingUp : TrendingDown}
-            gradient={isNetPos ? 'linear-gradient(135deg,#10b981,#059669)' : 'linear-gradient(135deg,#f97316,#dc2626)'}
-            glow={isNetPos ? '0 0 24px rgba(16,185,129,0.45)' : '0 0 24px rgba(249,115,22,0.45)'}
           />
         </div>
 
@@ -202,7 +192,7 @@ export default function BranchDashboard() {
                 Last 8 weeks
               </span>
             </div>
-            <p className="text-xs mb-5" style={{ color: 'rgba(255,255,255,0.3)' }}>Revenue vs. profit trend</p>
+            <p className="text-xs mb-5" style={{ color: 'rgba(255,255,255,0.3)' }}>Weekly revenue trend</p>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={data.weekly_chart} barGap={4} barCategoryGap="30%">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -212,7 +202,6 @@ export default function BranchDashboard() {
                 <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)', radius: 8 }} />
                 <Legend wrapperStyle={{ fontSize: 12, paddingTop: 16, color: 'rgba(255,255,255,0.5)' }} />
                 <Bar dataKey="revenue" name="Revenue" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="profit"  name="Profit"  fill="#10b981" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

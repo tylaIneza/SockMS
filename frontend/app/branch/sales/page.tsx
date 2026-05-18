@@ -375,7 +375,6 @@ export default function BranchSalesPage() {
                     <th className="th text-right">Qty</th>
                     <th className="th text-right">Price</th>
                     <th className="th text-right">Revenue</th>
-                    <th className="th text-right">Profit</th>
                     <th className="th">Date</th>
                   </tr>
                 </thead>
@@ -386,7 +385,6 @@ export default function BranchSalesPage() {
                       <td className="td text-right" style={{ color: C.muted }}>{s.quantity}</td>
                       <td className="td text-right" style={{ color: C.muted }}>{fmt(s.selling_price)}</td>
                       <td className="td text-right font-bold" style={{ color: '#818cf8' }}>{fmt(s.total_revenue)}</td>
-                      <td className="td text-right font-bold" style={{ color: '#34d399' }}>{fmt(s.profit)}</td>
                       <td className="td text-xs" style={{ color: C.muted }}>
                         {new Date(s.sold_at).toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </td>

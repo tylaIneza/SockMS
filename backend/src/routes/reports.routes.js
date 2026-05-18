@@ -11,7 +11,6 @@ router.get('/daily', auth, async (req, res) => {
     const users = await many(
       `SELECT u.id AS user_id, u.name AS user_name,
               COALESCE(SUM(s.total_revenue), 0) AS revenue,
-              COALESCE(SUM(s.profit), 0) AS gross_profit,
               COUNT(s.id) AS sales_count,
               COALESCE(
                 (SELECT SUM(e.amount) FROM expenses e WHERE e.user_id = u.id AND DATE(e.expense_date) = ?), 0
@@ -23,17 +22,11 @@ router.get('/daily', auth, async (req, res) => {
       [date, date],
     );
 
-    const usersWithNet = users.map(u => ({
-      ...u,
-      net_profit: parseFloat(u.gross_profit) - parseFloat(u.expenses),
-    }));
-
     const products = await many(
       `SELECT p.name AS product_name, COALESCE(c.name, 'Uncategorized') AS category_name,
               u.name AS user_name,
               SUM(s.quantity) AS qty_sold,
-              SUM(s.total_revenue) AS revenue,
-              SUM(s.profit) AS profit
+              SUM(s.total_revenue) AS revenue
        FROM sales s
        JOIN products p ON p.id = s.product_id
        JOIN users u ON u.id = s.user_id
@@ -44,7 +37,7 @@ router.get('/daily', auth, async (req, res) => {
       [date],
     );
 
-    res.json({ date, users: usersWithNet, products });
+    res.json({ date, users, products });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -58,13 +51,11 @@ router.get('/dashboard', auth, async (req, res) => {
 
     const todaySales = await one(
       `SELECT COALESCE(SUM(total_revenue),0) AS revenue,
-              COALESCE(SUM(profit),0) AS profit,
               COUNT(*) AS sales_count
        FROM sales s WHERE DATE(s.sold_at) = CURDATE() ${uFilter}`, up);
 
     const weekSales = await one(
-      `SELECT COALESCE(SUM(total_revenue),0) AS revenue,
-              COALESCE(SUM(profit),0) AS profit
+      `SELECT COALESCE(SUM(total_revenue),0) AS revenue
        FROM sales s WHERE YEARWEEK(s.sold_at,1)=YEARWEEK(CURDATE(),1) ${uFilter}`, up);
 
     const weekExp = await one(
@@ -73,7 +64,6 @@ router.get('/dashboard', auth, async (req, res) => {
 
     const allTime = await one(
       `SELECT COALESCE(SUM(total_revenue),0) AS revenue,
-              COALESCE(SUM(profit),0) AS profit,
               COUNT(*) AS sales_count
        FROM sales s WHERE 1=1 ${uFilter}`, up);
 
@@ -98,8 +88,7 @@ router.get('/dashboard', auth, async (req, res) => {
     const weeklyChart = await many(
       `SELECT YEARWEEK(s.sold_at,1) AS week,
               DATE_FORMAT(MIN(s.sold_at),'%d %b') AS week_label,
-              SUM(s.total_revenue) AS revenue,
-              SUM(s.profit) AS profit
+              SUM(s.total_revenue) AS revenue
        FROM sales s
        WHERE s.sold_at >= DATE_SUB(CURDATE(), INTERVAL 8 WEEK) ${uFilter}
        GROUP BY YEARWEEK(s.sold_at,1) ORDER BY week`, up);
@@ -109,7 +98,6 @@ router.get('/dashboard', auth, async (req, res) => {
       userSummary = await many(
         `SELECT u.name AS user_name,
                 COALESCE(SUM(s.total_revenue),0) AS revenue,
-                COALESCE(SUM(s.profit),0) AS profit,
                 COUNT(s.id) AS sales_count
          FROM users u
          LEFT JOIN sales s ON s.user_id=u.id
@@ -118,9 +106,9 @@ router.get('/dashboard', auth, async (req, res) => {
     }
 
     res.json({
-      today:        { revenue: todaySales?.revenue || 0, profit: todaySales?.profit || 0, sales_count: todaySales?.sales_count || 0 },
-      this_week:    { revenue: weekSales?.revenue || 0, profit: weekSales?.profit || 0, expenses: weekExp?.total || 0 },
-      all_time:     { revenue: allTime?.revenue || 0, profit: allTime?.profit || 0, expenses: allExp?.total || 0, sales_count: allTime?.sales_count || 0 },
+      today:        { revenue: todaySales?.revenue || 0, sales_count: todaySales?.sales_count || 0 },
+      this_week:    { revenue: weekSales?.revenue || 0, expenses: weekExp?.total || 0 },
+      all_time:     { revenue: allTime?.revenue || 0, expenses: allExp?.total || 0, sales_count: allTime?.sales_count || 0 },
       top_products: topProducts,
       low_stock:    lowStock,
       weekly_chart: weeklyChart,
@@ -153,7 +141,6 @@ router.get('/weekly', auth, async (req, res) => {
 
     const summary = await one(
       `SELECT COALESCE(SUM(total_revenue),0) AS revenue,
-              COALESCE(SUM(profit),0) AS gross_profit,
               COUNT(*) AS sales_count
        FROM sales s WHERE DATE(sold_at) BETWEEN ? AND ? ${uFilter}`, bp);
 
@@ -171,7 +158,6 @@ router.get('/weekly', auth, async (req, res) => {
       `SELECT DATE(sold_at) AS date,
               DATE_FORMAT(DATE(sold_at), '%a %d') AS day_label,
               SUM(total_revenue) AS revenue,
-              SUM(profit) AS profit,
               COUNT(*) AS sales_count
        FROM sales s WHERE DATE(sold_at) BETWEEN ? AND ? ${uFilter}
        GROUP BY DATE(sold_at) ORDER BY date`, bp);
@@ -194,7 +180,6 @@ router.get('/weekly', auth, async (req, res) => {
         date: dateStr,
         day_label: found?.day_label || dayLabel,
         revenue:     found?.revenue || 0,
-        profit:      found?.profit  || 0,
         expenses:    expMap[dateStr] || 0,
         sales_count: found?.sales_count || 0,
       });
@@ -207,16 +192,11 @@ router.get('/weekly', auth, async (req, res) => {
        WHERE e.expense_date BETWEEN ? AND ? ${eFilter}
        ORDER BY e.amount DESC`, ep);
 
-    const grossProfit = parseFloat(summary?.gross_profit || 0);
-    const expenses    = parseFloat(expTotal?.total || 0);
-
     res.json({
       period:  { start: sd, end: ed },
       summary: {
         revenue:      parseFloat(summary?.revenue || 0),
-        gross_profit: grossProfit,
-        expenses,
-        net_profit:   grossProfit - expenses,
+        expenses:     parseFloat(expTotal?.total || 0),
         sales_count:  parseInt(summary?.sales_count || 0),
       },
       daily:             allDays,
@@ -234,7 +214,6 @@ router.get('/users', auth, async (req, res) => {
     const rows = await many(
       `SELECT u.id AS user_id, u.name AS user_name,
               COALESCE(SUM(s.total_revenue),0) AS revenue,
-              COALESCE(SUM(s.profit),0) AS gross_profit,
               COUNT(s.id) AS sales_count,
               COALESCE((SELECT SUM(amount) FROM expenses e WHERE e.user_id=u.id),0) AS expenses
        FROM users u
@@ -242,10 +221,7 @@ router.get('/users', auth, async (req, res) => {
        WHERE u.is_active=1 AND u.role = 'branch_user'
        GROUP BY u.id ORDER BY revenue DESC`);
 
-    res.json(rows.map(r => ({
-      ...r,
-      net_profit: parseFloat(r.gross_profit) - parseFloat(r.expenses),
-    })));
+    res.json(rows);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
