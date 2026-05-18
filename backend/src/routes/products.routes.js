@@ -3,16 +3,12 @@ const { v4: uuid } = require('uuid');
 const { many, one, run } = require('../config/db');
 const { auth, adminOnly } = require('../middleware/auth');
 
-// Create branch_stock row for every active branch so the product is visible system-wide
-async function initBranchStock(productId, quantity = 0) {
-  const branches = await many('SELECT id FROM branches WHERE is_active = 1', []);
-  for (const b of branches) {
-    const exists = await one('SELECT id FROM branch_stock WHERE branch_id=? AND product_id=?', [b.id, productId]);
-    if (!exists) {
-      await run('INSERT INTO branch_stock (id, branch_id, product_id, quantity) VALUES (?,?,?,?)', [uuid(), b.id, productId, quantity]);
-    } else if (quantity > 0) {
-      await run('UPDATE branch_stock SET quantity = quantity + ? WHERE branch_id=? AND product_id=?', [quantity, b.id, productId]);
-    }
+async function initProductStock(productId, quantity = 0) {
+  const existing = await one('SELECT product_id FROM product_stock WHERE product_id = ?', [productId]);
+  if (!existing) {
+    await run('INSERT INTO product_stock (product_id, quantity) VALUES (?, ?)', [productId, quantity]);
+  } else if (quantity > 0) {
+    await run('UPDATE product_stock SET quantity = quantity + ? WHERE product_id = ?', [quantity, productId]);
   }
 }
 
@@ -21,10 +17,10 @@ router.get('/', auth, async (req, res) => {
     const { search, category_id } = req.query;
     let sql = `
       SELECT p.*, c.name AS category_name,
-             COALESCE(SUM(bs.quantity), 0) AS total_stock
+             COALESCE(ps.quantity, 0) AS total_stock
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
-      LEFT JOIN branch_stock bs ON bs.product_id = p.id
+      LEFT JOIN product_stock ps ON ps.product_id = p.id
       WHERE p.is_active = 1`;
     const params = [];
     if (search)      { sql += ' AND p.name LIKE ?';        params.push(`%${search}%`); }
@@ -36,19 +32,16 @@ router.get('/', auth, async (req, res) => {
 
 router.get('/low-stock', auth, async (req, res) => {
   try {
-    const branchId = req.user.role === 'branch_user' ? req.user.branch_id : req.query.branch_id;
-    let sql = `
-      SELECT p.id, p.name, p.low_stock_alert, bs.quantity, bs.branch_id,
-             b.name AS branch_name, c.name AS category_name
-      FROM branch_stock bs
-      JOIN products p ON p.id = bs.product_id
-      JOIN branches b ON b.id = bs.branch_id
-      LEFT JOIN categories c ON c.id = p.category_id
-      WHERE bs.quantity <= p.low_stock_alert AND p.is_active = 1`;
-    const params = [];
-    if (branchId) { sql += ' AND bs.branch_id = ?'; params.push(branchId); }
-    sql += ' ORDER BY bs.quantity ASC';
-    res.json(await many(sql, params));
+    const rows = await many(
+      `SELECT p.id, p.name, p.low_stock_alert, ps.quantity, c.name AS category_name
+       FROM product_stock ps
+       JOIN products p ON p.id = ps.product_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE ps.quantity <= p.low_stock_alert AND p.is_active = 1
+       ORDER BY ps.quantity ASC`,
+      [],
+    );
+    res.json(rows);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -65,7 +58,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
        VALUES (?,?,?,?,?,?,?)`,
       [id, name, category_id || null, buying_price, min_selling_price, low_stock_alert || 10, req.user.id],
     );
-    await initBranchStock(id);
+    await initProductStock(id);
     res.status(201).json(await one(
       'SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?',
       [id],
@@ -135,7 +128,7 @@ router.post('/import', auth, adminOnly, async (req, res) => {
           [newId, name, categoryId, buyPrice, minPrice, parseInt(p.low_stock_alert) || 10, req.user.id],
         );
         const initQty = parseInt(p.quantity) || 0;
-        await initBranchStock(newId, initQty);
+        await initProductStock(newId, initQty);
         created++;
       } catch (rowErr) {
         errors.push({ name: String(p.name || ''), reason: rowErr.message });

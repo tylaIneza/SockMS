@@ -87,14 +87,13 @@ router.get('/dashboard', auth, async (req, res) => {
        GROUP BY s.product_id ORDER BY qty_sold DESC LIMIT 5`, bp);
 
     const lowStock = await many(
-      `SELECT p.name, p.low_stock_alert, bs.quantity, b.name AS branch_name
-       FROM branch_stock bs
-       JOIN products p ON p.id=bs.product_id
-       JOIN branches b ON b.id=bs.branch_id
-       WHERE bs.quantity <= p.low_stock_alert AND p.is_active=1
-       ${branchId ? 'AND bs.branch_id=?' : ''}
-       ORDER BY bs.quantity ASC LIMIT 20`,
-      branchId ? [branchId] : []);
+      `SELECT p.name, p.low_stock_alert, ps.quantity, c.name AS category_name
+       FROM product_stock ps
+       JOIN products p ON p.id=ps.product_id
+       LEFT JOIN categories c ON c.id=p.category_id
+       WHERE ps.quantity <= p.low_stock_alert AND p.is_active=1
+       ORDER BY ps.quantity ASC LIMIT 20`,
+      []);
 
     const weeklyChart = await many(
       `SELECT YEARWEEK(s.sold_at,1) AS week,

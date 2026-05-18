@@ -430,7 +430,7 @@ export default function AdminDashboard() {
                     style={{background:'rgba(14,14,35,0.7)'}}>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-white truncate">{item.name}</p>
-                      <p className="text-[10px] mt-0.5 truncate" style={{color:'rgba(251,191,36,0.6)'}}>{item.branch_name}</p>
+                      <p className="text-[10px] mt-0.5 truncate" style={{color:'rgba(251,191,36,0.6)'}}>{item.category_name || 'No category'}</p>
                     </div>
                     <div className="text-right ml-3 shrink-0">
                       <p className="text-base font-black text-red-400 leading-none">{item.quantity}</p>

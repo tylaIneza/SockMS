@@ -8,10 +8,9 @@ router.get('/', auth, async (req, res) => {
     const rows = await many(
       `SELECT b.*,
          COUNT(DISTINCT u.id) AS user_count,
-         COALESCE(SUM(bs.quantity), 0) AS total_stock
+         (SELECT COALESCE(SUM(quantity), 0) FROM product_stock) AS total_stock
        FROM branches b
        LEFT JOIN users u ON u.branch_id = b.id AND u.is_active = 1
-       LEFT JOIN branch_stock bs ON bs.branch_id = b.id
        WHERE b.is_active = 1
        GROUP BY b.id ORDER BY b.name`,
     );
@@ -45,6 +44,18 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
     await run('UPDATE branches SET is_active = 0 WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+router.delete('/:id/permanent', auth, adminOnly, async (req, res) => {
+  try {
+    await run('DELETE FROM branches WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(400).json({ message: 'Cannot permanently delete: branch has existing sales or expenses. Deactivate it instead.' });
+    }
+    res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;

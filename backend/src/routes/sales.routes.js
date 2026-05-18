@@ -45,16 +45,16 @@ router.post('/', auth, async (req, res) => {
 
     const sale = await transaction(async (conn) => {
       const [[stock]] = await conn.execute(
-        'SELECT quantity FROM branch_stock WHERE branch_id=? AND product_id=?',
-        [branch_id, product_id],
+        'SELECT quantity FROM product_stock WHERE product_id = ?',
+        [product_id],
       );
       if (!stock || stock.quantity < quantity) {
         throw new Error(`Insufficient stock. Available: ${stock?.quantity || 0}`);
       }
 
       await conn.execute(
-        'UPDATE branch_stock SET quantity = quantity - ? WHERE branch_id=? AND product_id=?',
-        [quantity, branch_id, product_id],
+        'UPDATE product_stock SET quantity = quantity - ? WHERE product_id = ?',
+        [quantity, product_id],
       );
 
       const total_revenue = (parseFloat(selling_price) * quantity).toFixed(2);

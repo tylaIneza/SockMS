@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Plus, Pencil, Trash2, X, Shield, User } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Shield, User, AlertTriangle } from 'lucide-react';
 
 const EMPTY = { name: '', phone: '', password: '', role: 'branch_user', branch_id: '' };
 
@@ -13,6 +13,10 @@ export default function UsersPage() {
   const [form, setForm]             = useState({ ...EMPTY });
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
+
+  const [delModal, setDelModal]     = useState<{ open: boolean; user: any }>({ open: false, user: null });
+  const [delError, setDelError]     = useState('');
+  const [deleting, setDeleting]     = useState(false);
 
   const load = () => {
     api.get('/users').then(r => setUsers(r.data));
@@ -37,9 +41,24 @@ export default function UsersPage() {
     finally { setSaving(false); }
   };
 
-  const del = async (id: string) => {
-    if (!confirm('Deactivate this user?')) return;
-    await api.delete(`/users/${id}`); load();
+  const deactivate = async () => {
+    if (!delModal.user) return;
+    setDeleting(true); setDelError('');
+    try {
+      await api.delete(`/users/${delModal.user.id}`);
+      setDelModal({ open: false, user: null }); load();
+    } catch (e: any) { setDelError(e.response?.data?.message || 'Error'); }
+    finally { setDeleting(false); }
+  };
+
+  const deletePermanent = async () => {
+    if (!delModal.user) return;
+    setDeleting(true); setDelError('');
+    try {
+      await api.delete(`/users/${delModal.user.id}/permanent`);
+      setDelModal({ open: false, user: null }); load();
+    } catch (e: any) { setDelError(e.response?.data?.message || 'Error'); }
+    finally { setDeleting(false); }
   };
 
   return (
@@ -82,8 +101,9 @@ export default function UsersPage() {
                 <td className="td"><span className={u.is_active ? 'badge-green' : 'badge-red'}>{u.is_active ? 'Active' : 'Inactive'}</span></td>
                 <td className="td">
                   <div className="flex items-center gap-1 justify-end">
-                    <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-indigo-500/150/10 text-indigo-400"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => del(u.id)} className="p-1.5 rounded-lg hover:bg-red-500/120/10 text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { setDelModal({ open: true, user: u }); setDelError(''); }}
+                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </td>
               </tr>
@@ -93,15 +113,16 @@ export default function UsersPage() {
         {users.length === 0 && <p className="text-center text-slate-500 py-10">No users found</p>}
       </div>
 
+      {/* ── Edit / Create modal ── */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="modal-card rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
               <h2 className="font-semibold text-white">{editing ? 'Edit User' : 'New User'}</h2>
               <button onClick={() => setModal(false)}><X className="w-5 h-5 text-slate-500" /></button>
             </div>
             <form onSubmit={save} className="p-6 space-y-4">
-              {error && <div className="alert-error text-sm rounded-lg px-3 py-2">{error}</div>}
+              {error && <div className="alert-error">{error}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="label">Name</label><input className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
                 <div><label className="label">Phone Number</label><input type="tel" className="input" placeholder="07XXXXXXXX" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} required /></div>
@@ -128,6 +149,42 @@ export default function UsersPage() {
                 <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Saving...' : 'Save'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirmation modal ── */}
+      {delModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="modal-card rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+              <h2 className="font-semibold text-white">Remove User</h2>
+              <button onClick={() => setDelModal({ open: false, user: null })}><X className="w-5 h-5 text-slate-500" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)' }}>
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-white">{delModal.user?.name}</p>
+                  <p className="text-xs text-slate-400">{delModal.user?.phone}</p>
+                </div>
+              </div>
+              {delError && <div className="alert-error">{delError}</div>}
+              <p className="text-sm text-slate-400">Choose an action:</p>
+              <div className="space-y-2">
+                <button onClick={deactivate} disabled={deleting}
+                  className="w-full btn-ghost justify-center text-amber-400 border-amber-500/30 hover:bg-amber-500/10">
+                  Deactivate (keep data, block login)
+                </button>
+                <button onClick={deletePermanent} disabled={deleting}
+                  className="w-full btn-danger justify-center">
+                  {deleting ? 'Deleting...' : 'Delete Permanently (cannot undo)'}
+                </button>
+              </div>
+              <button onClick={() => setDelModal({ open: false, user: null })} className="w-full btn-ghost justify-center">
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

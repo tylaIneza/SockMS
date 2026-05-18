@@ -67,4 +67,17 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+router.delete('/:id/permanent', auth, adminOnly, async (req, res) => {
+  try {
+    if (req.params.id === req.user.id) return res.status(400).json({ message: 'Cannot delete yourself' });
+    await run('DELETE FROM users WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(400).json({ message: 'Cannot permanently delete: user has existing sales or expenses. Deactivate instead.' });
+    }
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

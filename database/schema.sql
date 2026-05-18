@@ -42,14 +42,10 @@ CREATE TABLE IF NOT EXISTS products (
   FOREIGN KEY (created_by)  REFERENCES users(id)       ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS branch_stock (
-  id         VARCHAR(36) NOT NULL PRIMARY KEY,
-  branch_id  VARCHAR(36) NOT NULL,
-  product_id VARCHAR(36) NOT NULL,
+CREATE TABLE IF NOT EXISTS product_stock (
+  product_id VARCHAR(36) NOT NULL PRIMARY KEY,
   quantity   INT         NOT NULL DEFAULT 0,
-  UNIQUE KEY uq_bp (branch_id, product_id),
-  FOREIGN KEY (branch_id)  REFERENCES branches(id)  ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id)  ON DELETE CASCADE
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS sales (
@@ -82,17 +78,3 @@ CREATE TABLE IF NOT EXISTS expenses (
   FOREIGN KEY (user_id)   REFERENCES users(id)    ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS stock_transfers (
-  id             VARCHAR(36) NOT NULL PRIMARY KEY,
-  product_id     VARCHAR(36) NOT NULL,
-  from_branch_id VARCHAR(36) NOT NULL,
-  to_branch_id   VARCHAR(36) NOT NULL,
-  quantity       INT         NOT NULL,
-  transferred_by VARCHAR(36) NOT NULL,
-  note           TEXT,
-  transferred_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (product_id)     REFERENCES products(id)  ON DELETE RESTRICT,
-  FOREIGN KEY (from_branch_id) REFERENCES branches(id)  ON DELETE RESTRICT,
-  FOREIGN KEY (to_branch_id)   REFERENCES branches(id)  ON DELETE RESTRICT,
-  FOREIGN KEY (transferred_by) REFERENCES users(id)     ON DELETE RESTRICT
-);
