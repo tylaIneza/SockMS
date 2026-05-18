@@ -20,27 +20,27 @@ export default function BranchStockPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Stock</h1>
-          <p className="text-gray-500 text-sm mt-1">{stock.length} products · {lowCount > 0 && <span className="text-amber-600 font-medium">{lowCount} low stock</span>}</p>
+          <h1 className="text-2xl font-bold text-white">My Stock</h1>
+          <p className="text-slate-400 text-sm mt-1">{stock.length} products · {lowCount > 0 && <span className="text-amber-400 font-medium">{lowCount} low stock</span>}</p>
         </div>
       </div>
 
       {lowCount > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+        <div className="bg-amber-500/10 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-          <p className="text-sm text-amber-800">{lowCount} product{lowCount > 1 ? 's are' : ' is'} running low on stock. Contact admin to restock.</p>
+          <p className="text-sm text-amber-300">{lowCount} product{lowCount > 1 ? 's are' : ' is'} running low on stock. Contact admin to restock.</p>
         </div>
       )}
 
       <div className="card overflow-hidden">
-        <div className="p-4 border-b border-gray-100">
+        <div className="p-4 border-b border-white/8">
           <div className="relative max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input className="input pl-9" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          <thead className="thead-dark">
             <tr>
               <th className="th">Product</th>
               <th className="th">Category</th>
@@ -48,19 +48,19 @@ export default function BranchStockPage() {
               <th className="th text-right">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-dark">
             {filtered.map((s, i) => (
-              <tr key={i} className={`hover:bg-gray-50 ${s.quantity <= s.low_stock_alert ? 'bg-amber-50/30' : ''}`}>
+              <tr key={i} className={`hover:bg-white/5 ${s.quantity <= s.low_stock_alert ? 'bg-amber-500/10/30' : ''}`}>
                 <td className="td">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
-                      <Package className="w-3.5 h-3.5 text-indigo-600" />
+                    <div className="w-7 h-7 bg-indigo-500/15 rounded-lg flex items-center justify-center">
+                      <Package className="w-3.5 h-3.5 text-indigo-400" />
                     </div>
                     <span className="font-medium">{s.product_name}</span>
                   </div>
                 </td>
                 <td className="td"><span className="badge-blue">{s.category_name || '—'}</span></td>
-                <td className="td text-right font-bold text-gray-900">{s.quantity}</td>
+                <td className="td text-right font-bold text-white">{s.quantity}</td>
                 <td className="td text-right">
                   {s.quantity === 0 ? (
                     <span className="badge-red">Out of Stock</span>
@@ -74,7 +74,7 @@ export default function BranchStockPage() {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <p className="text-center text-gray-400 py-10">No products found</p>}
+        {filtered.length === 0 && <p className="text-center text-slate-500 py-10">No products found</p>}
       </div>
     </div>
   );

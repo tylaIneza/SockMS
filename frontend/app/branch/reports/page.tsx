@@ -22,31 +22,31 @@ export default function BranchReportsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Weekly Report</h1>
-        <p className="text-gray-500 text-sm mt-1">Your branch performance</p>
+        <h1 className="text-2xl font-bold text-white">Weekly Report</h1>
+        <p className="text-slate-400 text-sm mt-1">Your branch performance</p>
       </div>
 
       <div className="flex items-center gap-3">
         <button onClick={() => setWeekOffset(w => w + 1)} className="btn-ghost px-3">← Prev Week</button>
-        <span className="text-sm font-medium text-gray-700 min-w-40 text-center">
+        <span className="text-sm font-medium text-slate-200 min-w-40 text-center">
           {weekly ? `${weekly.period.start} – ${weekly.period.end}` : '...'}
         </span>
         <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} className="btn-ghost px-3 disabled:opacity-40">Next Week →</button>
       </div>
 
       {loading ? (
-        <div className="text-gray-400 animate-pulse">Loading report...</div>
+        <div className="text-slate-500 animate-pulse">Loading report...</div>
       ) : weekly && (
         <>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
             {[
-              { label: 'Revenue',      value: fmt(weekly.summary.revenue),      cls: 'text-indigo-700' },
+              { label: 'Revenue',      value: fmt(weekly.summary.revenue),      cls: 'text-indigo-300' },
               { label: 'Gross Profit', value: fmt(weekly.summary.gross_profit), cls: 'text-emerald-700' },
               { label: 'Expenses',     value: fmt(weekly.summary.expenses),     cls: 'text-red-600' },
-              { label: 'Net Profit',   value: fmt(weekly.summary.net_profit),   cls: parseFloat(weekly.summary.net_profit) >= 0 ? 'text-blue-700' : 'text-orange-600' },
+              { label: 'Net Profit',   value: fmt(weekly.summary.net_profit),   cls: parseFloat(weekly.summary.net_profit) >= 0 ? 'text-blue-300' : 'text-orange-600' },
             ].map(c => (
               <div key={c.label} className="card p-4">
-                <p className="text-sm text-gray-500">{c.label}</p>
+                <p className="text-sm text-slate-400">{c.label}</p>
                 <p className={`text-xl font-bold mt-1 ${c.cls}`}>{c.value}</p>
               </div>
             ))}
@@ -54,12 +54,12 @@ export default function BranchReportsPage() {
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-2 card p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">Daily Revenue & Expenses</h2>
+              <h2 className="font-semibold text-white mb-4">Daily Revenue & Expenses</h2>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={weekly.daily}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="day_label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="day_label" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v: any) => fmt(v)} />
                   <Legend />
                   <Bar dataKey="revenue"  name="Revenue"  fill="#6366f1" radius={[4,4,0,0]} />
@@ -69,18 +69,18 @@ export default function BranchReportsPage() {
             </div>
 
             <div className="card p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">Top Products</h2>
+              <h2 className="font-semibold text-white mb-4">Top Products</h2>
               {weekly.top_products.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-6">No sales this week</p>
+                <p className="text-slate-500 text-sm text-center py-6">No sales this week</p>
               ) : (
                 <div className="space-y-2">
                   {weekly.top_products.map((p: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                       <div>
-                        <p className="text-sm font-medium text-gray-800">{p.name}</p>
-                        <p className="text-xs text-gray-400">{p.qty_sold} sold</p>
+                        <p className="text-sm font-medium text-white">{p.name}</p>
+                        <p className="text-xs text-slate-500">{p.qty_sold} sold</p>
                       </div>
-                      <span className="text-sm font-bold text-indigo-600">{fmt(p.revenue)}</span>
+                      <span className="text-sm font-bold text-indigo-400">{fmt(p.revenue)}</span>
                     </div>
                   ))}
                 </div>
@@ -90,12 +90,12 @@ export default function BranchReportsPage() {
 
           {weekly.expense_breakdown.length > 0 && (
             <div className="card p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">Expenses This Week</h2>
+              <h2 className="font-semibold text-white mb-4">Expenses This Week</h2>
               <table className="w-full text-sm">
                 <thead><tr className="border-b"><th className="th pl-0">Description</th><th className="th text-right pr-0">Amount</th></tr></thead>
                 <tbody>
                   {weekly.expense_breakdown.map((ex: any, i: number) => (
-                    <tr key={i} className="border-b border-gray-50">
+                    <tr key={i} className="border-b border-white/5">
                       <td className="td pl-0">{ex.description}</td>
                       <td className="td text-right pr-0 text-red-600 font-medium">{fmt(ex.amount)}</td>
                     </tr>

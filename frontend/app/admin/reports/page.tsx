@@ -111,15 +111,15 @@ export default function AdminReportsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          <p className="text-gray-500 text-sm mt-1">Business performance analysis</p>
+          <h1 className="text-2xl font-bold text-white">Reports</h1>
+          <p className="text-slate-400 text-sm mt-1">Business performance analysis</p>
         </div>
       </div>
 
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-white/10">
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? 'border-indigo-600 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
             {t.label}
           </button>
         ))}
@@ -131,7 +131,7 @@ export default function AdminReportsPage() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <button onClick={() => setWeekOffset(w => w + 1)} className="btn-ghost px-3">← Prev</button>
-              <span className="text-sm font-medium text-gray-700 min-w-48 text-center">
+              <span className="text-sm font-medium text-slate-200 min-w-48 text-center">
                 {weekly ? `${weekly.period.start} – ${weekly.period.end}` : '...'}
               </span>
               <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0}
@@ -143,20 +143,20 @@ export default function AdminReportsPage() {
           </div>
 
           {loading ? (
-            <div className="text-gray-400 animate-pulse">Loading report...</div>
+            <div className="text-slate-500 animate-pulse">Loading report...</div>
           ) : weekly && (
             <>
               {/* Summary cards */}
               <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 {[
-                  { label: 'Revenue',      value: fmt(weekly.summary.revenue),      bar: 'bg-indigo-500' },
-                  { label: 'Gross Profit', value: fmt(weekly.summary.gross_profit), bar: 'bg-emerald-500' },
+                  { label: 'Revenue',      value: fmt(weekly.summary.revenue),      bar: 'bg-indigo-500/100' },
+                  { label: 'Gross Profit', value: fmt(weekly.summary.gross_profit), bar: 'bg-emerald-500/100' },
                   { label: 'Expenses',     value: fmt(weekly.summary.expenses),     bar: 'bg-red-400' },
-                  { label: 'Net Profit',   value: fmt(weekly.summary.net_profit),   bar: parseFloat(weekly.summary.net_profit) >= 0 ? 'bg-blue-500' : 'bg-orange-500' },
+                  { label: 'Net Profit',   value: fmt(weekly.summary.net_profit),   bar: parseFloat(weekly.summary.net_profit) >= 0 ? 'bg-blue-500/100' : 'bg-orange-500' },
                 ].map(c => (
                   <div key={c.label} className="card p-4">
-                    <p className="text-sm text-gray-500">{c.label}</p>
-                    <p className="text-xl font-bold text-gray-900 mt-1">{c.value}</p>
+                    <p className="text-sm text-slate-400">{c.label}</p>
+                    <p className="text-xl font-bold text-white mt-1">{c.value}</p>
                     <div className={`h-1 rounded-full mt-3 ${c.bar} opacity-60`} />
                   </div>
                 ))}
@@ -165,12 +165,12 @@ export default function AdminReportsPage() {
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 {/* Daily chart */}
                 <div className="xl:col-span-2 card p-5">
-                  <h2 className="font-semibold text-gray-800 mb-4">Daily Revenue & Expenses</h2>
+                  <h2 className="font-semibold text-white mb-4">Daily Revenue & Expenses</h2>
                   <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={weekly.daily}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="day_label" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="day_label" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }} />
+                      <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                       <Tooltip formatter={(v: any) => fmt(v)} />
                       <Legend />
                       <Bar dataKey="revenue"  name="Revenue"  fill="#6366f1" radius={[4,4,0,0]} />
@@ -181,18 +181,18 @@ export default function AdminReportsPage() {
 
                 {/* Top products */}
                 <div className="card p-5">
-                  <h2 className="font-semibold text-gray-800 mb-4">Top Products</h2>
+                  <h2 className="font-semibold text-white mb-4">Top Products</h2>
                   {weekly.top_products.length === 0 ? (
-                    <p className="text-gray-400 text-sm text-center py-6">No sales this week</p>
+                    <p className="text-slate-500 text-sm text-center py-6">No sales this week</p>
                   ) : (
                     <div className="space-y-2">
                       {weekly.top_products.map((p: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                           <div>
-                            <p className="text-sm font-medium text-gray-800">{p.name}</p>
-                            <p className="text-xs text-gray-500">{p.qty_sold} units sold</p>
+                            <p className="text-sm font-medium text-white">{p.name}</p>
+                            <p className="text-xs text-slate-400">{p.qty_sold} units sold</p>
                           </div>
-                          <span className="text-sm font-bold text-indigo-600">{fmt(p.revenue)}</span>
+                          <span className="text-sm font-bold text-indigo-400">{fmt(p.revenue)}</span>
                         </div>
                       ))}
                     </div>
@@ -202,11 +202,11 @@ export default function AdminReportsPage() {
 
               {/* Daily breakdown table */}
               <div className="card overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100">
-                  <h2 className="font-semibold text-gray-800">Daily Breakdown</h2>
+                <div className="px-5 py-4 border-b border-white/8">
+                  <h2 className="font-semibold text-white">Daily Breakdown</h2>
                 </div>
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
+                  <thead className="thead-dark">
                     <tr>
                       <th className="th">Day</th>
                       <th className="th text-right">Revenue</th>
@@ -215,24 +215,24 @@ export default function AdminReportsPage() {
                       <th className="th text-right">Sales</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-dark">
                     {weekly.daily.map((d: any, i: number) => (
-                      <tr key={i} className={`hover:bg-gray-50 ${Number(d.revenue) === 0 ? 'opacity-40' : ''}`}>
+                      <tr key={i} className={`hover:bg-white/5 ${Number(d.revenue) === 0 ? 'opacity-40' : ''}`}>
                         <td className="td font-medium">{d.day_label}</td>
-                        <td className="td text-right text-indigo-600 font-medium">{fmt(d.revenue)}</td>
+                        <td className="td text-right text-indigo-400 font-medium">{fmt(d.revenue)}</td>
                         <td className="td text-right text-red-500">{fmt(d.expenses)}</td>
-                        <td className="td text-right text-emerald-600 font-medium">{fmt(d.profit)}</td>
-                        <td className="td text-right text-gray-500">{d.sales_count}</td>
+                        <td className="td text-right text-emerald-400 font-medium">{fmt(d.profit)}</td>
+                        <td className="td text-right text-slate-400">{d.sales_count}</td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-gray-50 border-t-2 border-gray-200 font-bold">
+                  <tfoot className="bg-gray-50 border-t-2 border-white/10 font-bold">
                     <tr>
-                      <td className="td text-gray-700">Week Total</td>
-                      <td className="td text-right text-indigo-700">{fmt(weekly.summary.revenue)}</td>
+                      <td className="td text-slate-200">Week Total</td>
+                      <td className="td text-right text-indigo-300">{fmt(weekly.summary.revenue)}</td>
                       <td className="td text-right text-red-600">{fmt(weekly.summary.expenses)}</td>
                       <td className="td text-right text-emerald-700">{fmt(weekly.summary.gross_profit)}</td>
-                      <td className="td text-right text-gray-700">{weekly.summary.sales_count}</td>
+                      <td className="td text-right text-slate-200">{weekly.summary.sales_count}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -241,14 +241,14 @@ export default function AdminReportsPage() {
               {/* Expense breakdown */}
               {weekly.expense_breakdown.length > 0 && (
                 <div className="card p-5">
-                  <h2 className="font-semibold text-gray-800 mb-4">Expense Breakdown</h2>
+                  <h2 className="font-semibold text-white mb-4">Expense Breakdown</h2>
                   <table className="w-full text-sm">
                     <thead><tr className="border-b"><th className="th pl-0">Description</th><th className="th">Branch</th><th className="th text-right pr-0">Amount</th></tr></thead>
                     <tbody>
                       {weekly.expense_breakdown.map((ex: any, i: number) => (
-                        <tr key={i} className="border-b border-gray-50">
+                        <tr key={i} className="border-b border-white/5">
                           <td className="td pl-0">{ex.description}</td>
-                          <td className="td text-gray-500">{ex.branch_name}</td>
+                          <td className="td text-slate-400">{ex.branch_name}</td>
                           <td className="td text-right pr-0 text-red-600 font-medium">{fmt(ex.amount)}</td>
                         </tr>
                       ))}
@@ -266,16 +266,16 @@ export default function AdminReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {branchReport.map((b: any) => (
               <div key={b.branch_id} className="card p-5 space-y-3">
-                <h3 className="font-semibold text-gray-900">{b.branch_name}</h3>
+                <h3 className="font-semibold text-white">{b.branch_name}</h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-gray-500">Revenue</span><span className="font-medium text-indigo-600">{fmt(b.revenue)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Gross Profit</span><span className="font-medium text-emerald-600">{fmt(b.gross_profit)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Expenses</span><span className="font-medium text-red-500">{fmt(b.expenses)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Revenue</span><span className="font-medium text-indigo-400">{fmt(b.revenue)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Gross Profit</span><span className="font-medium text-emerald-400">{fmt(b.gross_profit)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Expenses</span><span className="font-medium text-red-500">{fmt(b.expenses)}</span></div>
                   <div className="flex justify-between pt-2 border-t">
-                    <span className="font-medium text-gray-700">Net Profit</span>
+                    <span className="font-medium text-slate-200">Net Profit</span>
                     <span className={`font-bold ${parseFloat(b.net_profit) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{fmt(b.net_profit)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-400"><span>{b.sales_count} sales</span><span>{b.user_count} users</span></div>
+                  <div className="flex justify-between text-xs text-slate-500"><span>{b.sales_count} sales</span><span>{b.user_count} users</span></div>
                 </div>
               </div>
             ))}
@@ -283,12 +283,12 @@ export default function AdminReportsPage() {
 
           {branchReport.length > 0 && (
             <div className="card p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">Branch Revenue Comparison (All Time)</h2>
+              <h2 className="font-semibold text-white mb-4">Branch Revenue Comparison (All Time)</h2>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={branchReport}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="branch_name" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="branch_name" tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v: any) => fmt(v)} />
                   <Legend />
                   <Bar dataKey="revenue"      name="Revenue"      fill="#6366f1" radius={[4,4,0,0]} />

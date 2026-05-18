@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS users (
   id         VARCHAR(36)                          NOT NULL PRIMARY KEY,
   name       VARCHAR(255)                         NOT NULL,
-  email      VARCHAR(255)                         NOT NULL UNIQUE,
+  email      VARCHAR(255)                         NULL UNIQUE,
+  phone      VARCHAR(20)                          NULL UNIQUE,
   password   VARCHAR(255)                         NOT NULL,
   role       ENUM('super_admin','branch_user')    NOT NULL DEFAULT 'branch_user',
   branch_id  VARCHAR(36),

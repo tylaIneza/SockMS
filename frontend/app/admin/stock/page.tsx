@@ -68,14 +68,14 @@ export default function StockPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Stock Management</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage inventory across all branches</p>
+        <h1 className="text-2xl font-bold text-white">Stock Management</h1>
+        <p className="text-slate-400 text-sm mt-1">Manage inventory across all branches</p>
       </div>
 
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-white/10">
         {tabs.map(t => (
           <button key={t.id} onClick={() => { setTab(t.id); setError(''); setSuccess(''); }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? 'border-indigo-600 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
             {t.label}
           </button>
         ))}
@@ -84,12 +84,12 @@ export default function StockPage() {
       {tab === 'stock' && (
         <div className="space-y-4">
           <div className="relative max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input className="input pl-9" placeholder="Search product or branch..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div className="card overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="thead-dark">
                 <tr>
                   <th className="th">Product</th>
                   <th className="th">Category</th>
@@ -98,12 +98,12 @@ export default function StockPage() {
                   <th className="th text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-dark">
                 {filtered.map((s, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
+                  <tr key={i} className="hover:bg-white/5">
                     <td className="td font-medium">{s.product_name}</td>
                     <td className="td"><span className="badge-blue">{s.category_name || '—'}</span></td>
-                    <td className="td text-gray-500">{s.branch_name}</td>
+                    <td className="td text-slate-400">{s.branch_name}</td>
                     <td className="td text-right font-bold">{s.quantity}</td>
                     <td className="td text-right">
                       <span className={s.quantity <= s.low_stock_alert ? 'badge-red' : s.quantity <= s.low_stock_alert * 2 ? 'badge-yellow' : 'badge-green'}>
@@ -114,7 +114,7 @@ export default function StockPage() {
                 ))}
               </tbody>
             </table>
-            {filtered.length === 0 && <p className="text-center text-gray-400 py-10">No stock records found</p>}
+            {filtered.length === 0 && <p className="text-center text-slate-500 py-10">No stock records found</p>}
           </div>
         </div>
       )}
@@ -122,9 +122,9 @@ export default function StockPage() {
       {tab === 'add' && (
         <div className="max-w-md">
           <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Package className="w-4 h-4" /> Add Stock</h2>
-            {error   && <div className="bg-red-50 text-red-700 text-sm rounded-lg px-3 py-2">{error}</div>}
-            {success && <div className="bg-green-50 text-green-700 text-sm rounded-lg px-3 py-2">{success}</div>}
+            <h2 className="font-semibold text-white flex items-center gap-2"><Package className="w-4 h-4" /> Add Stock</h2>
+            {error   && <div className="alert-error text-sm rounded-lg px-3 py-2">{error}</div>}
+            {success && <div className="bg-emerald-500/10 text-emerald-400 text-sm rounded-lg px-3 py-2">{success}</div>}
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
                 <label className="label">Branch</label>
@@ -134,7 +134,7 @@ export default function StockPage() {
                   {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
                 {addForm.branch_id === 'all' && (
-                  <p className="text-xs text-indigo-600 mt-1">
+                  <p className="text-xs text-indigo-400 mt-1">
                     This quantity will be added to <strong>every branch</strong> ({branches.length} branches).
                   </p>
                 )}
@@ -150,7 +150,7 @@ export default function StockPage() {
                 <label className="label">Quantity</label>
                 <input type="number" min="1" className="input" value={addForm.quantity} onChange={e => setAddForm({...addForm, quantity: e.target.value})} required />
                 {addForm.branch_id === 'all' && addForm.quantity && (
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Total distributed: <strong>{parseInt(addForm.quantity) * branches.length} units</strong> ({addForm.quantity} × {branches.length} branches)
                   </p>
                 )}
@@ -167,9 +167,9 @@ export default function StockPage() {
       {tab === 'transfer' && (
         <div className="max-w-md">
           <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><ArrowRightLeft className="w-4 h-4" /> Transfer Between Branches</h2>
-            {error   && <div className="bg-red-50 text-red-700 text-sm rounded-lg px-3 py-2">{error}</div>}
-            {success && <div className="bg-green-50 text-green-700 text-sm rounded-lg px-3 py-2">{success}</div>}
+            <h2 className="font-semibold text-white flex items-center gap-2"><ArrowRightLeft className="w-4 h-4" /> Transfer Between Branches</h2>
+            {error   && <div className="alert-error text-sm rounded-lg px-3 py-2">{error}</div>}
+            {success && <div className="bg-emerald-500/10 text-emerald-400 text-sm rounded-lg px-3 py-2">{success}</div>}
             <form onSubmit={handleTransfer} className="space-y-4">
               <div>
                 <label className="label">Product</label>
@@ -209,7 +209,7 @@ export default function StockPage() {
       {tab === 'history' && (
         <div className="card overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="thead-dark">
               <tr>
                 <th className="th">Product</th>
                 <th className="th">From</th>
@@ -218,19 +218,19 @@ export default function StockPage() {
                 <th className="th">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-dark">
               {transfers.map((t: any, i: number) => (
-                <tr key={i} className="hover:bg-gray-50">
+                <tr key={i} className="hover:bg-white/5">
                   <td className="td font-medium">{t.product_name}</td>
-                  <td className="td text-gray-500">{t.from_branch}</td>
-                  <td className="td text-gray-500">{t.to_branch}</td>
+                  <td className="td text-slate-400">{t.from_branch}</td>
+                  <td className="td text-slate-400">{t.to_branch}</td>
                   <td className="td text-right font-medium">{t.quantity}</td>
-                  <td className="td text-gray-500 text-sm">{new Date(t.transferred_at).toLocaleDateString()}</td>
+                  <td className="td text-slate-400 text-sm">{new Date(t.transferred_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {transfers.length === 0 && <p className="text-center text-gray-400 py-10">No transfers yet</p>}
+          {transfers.length === 0 && <p className="text-center text-slate-500 py-10">No transfers yet</p>}
         </div>
       )}
     </div>

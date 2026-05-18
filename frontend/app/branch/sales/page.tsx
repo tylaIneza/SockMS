@@ -111,15 +111,15 @@ export default function BranchSalesPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Sales</h1>
-        <p className="text-gray-500 text-sm mt-1">Record sales for your branch</p>
+        <h1 className="text-2xl font-bold text-white">Sales</h1>
+        <p className="text-slate-400 text-sm mt-1">Record sales for your branch</p>
       </div>
 
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-white/10">
         {[{ id: 'new', label: 'New Sale' }, { id: 'history', label: 'Sales History' }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors
-              ${tab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              ${tab === t.id ? 'border-indigo-600 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
             {t.label}
           </button>
         ))}
@@ -132,7 +132,7 @@ export default function BranchSalesPage() {
             {/* ── Real-time product search ── */}
             <div ref={searchRef} className="relative">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                 <input
                   className="input pl-9 pr-9"
                   placeholder="Search product by name or category…"
@@ -143,16 +143,16 @@ export default function BranchSalesPage() {
                 />
                 {query && (
                   <button onClick={() => { setQuery(''); setDropOpen(false); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                     <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
 
               {dropOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 z-20 max-h-72 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 modal-card rounded-xl shadow-2xl border border-white/10 z-20 max-h-72 overflow-y-auto">
                   {searchResults.length === 0 ? (
-                    <div className="flex flex-col items-center py-8 text-gray-400">
+                    <div className="flex flex-col items-center py-8 text-slate-500">
                       <Package className="w-8 h-8 mb-2 text-gray-300" />
                       <p className="text-sm">No products match "{query}"</p>
                     </div>
@@ -164,14 +164,14 @@ export default function BranchSalesPage() {
                           key={s.product_id}
                           onMouseDown={e => e.preventDefault()} // keep focus on input
                           onClick={() => !inCart && addToCart(s)}
-                          className={`w-full flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0 text-left transition-colors
-                            ${inCart ? 'opacity-50 cursor-default bg-gray-50' : 'hover:bg-indigo-50 cursor-pointer'}`}
+                          className={`w-full flex items-center justify-between px-4 py-3 border-b border-white/5 last:border-0 text-left transition-colors
+                            ${inCart ? 'opacity-50 cursor-default bg-gray-50' : 'hover:bg-indigo-500/10 cursor-pointer'}`}
                         >
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{s.product_name}</p>
+                            <p className="text-sm font-medium text-white truncate">{s.product_name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
                               {s.category_name && <span className="badge-blue">{s.category_name}</span>}
-                              <span className="text-xs text-gray-400">Min: {fmt(s.min_selling_price)}</span>
+                              <span className="text-xs text-slate-500">Min: {fmt(s.min_selling_price)}</span>
                             </div>
                           </div>
                           <div className="ml-3 shrink-0 text-right">
@@ -188,12 +188,12 @@ export default function BranchSalesPage() {
               )}
             </div>
 
-            {error   && <div className="bg-red-50 text-red-700 text-sm rounded-xl px-4 py-3 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{error}</div>}
-            {success && <div className="bg-green-50 text-green-700 text-sm rounded-xl px-4 py-3 flex items-center gap-2"><CheckCircle className="w-4 h-4 shrink-0" />{success}</div>}
+            {error   && <div className="alert-error text-sm rounded-xl px-4 py-3 flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{error}</div>}
+            {success && <div className="bg-emerald-500/10 text-emerald-400 text-sm rounded-xl px-4 py-3 flex items-center gap-2"><CheckCircle className="w-4 h-4 shrink-0" />{success}</div>}
 
             {/* ── Cart table ── */}
             {cart.length === 0 ? (
-              <div className="card p-12 text-center text-gray-400">
+              <div className="card p-12 text-center text-slate-500">
                 <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-gray-200" />
                 <p className="font-medium">Cart is empty</p>
                 <p className="text-sm mt-1">Search for a product above to add it</p>
@@ -201,7 +201,7 @@ export default function BranchSalesPage() {
             ) : (
               <div className="card overflow-hidden">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-100">
+                  <thead className="thead-dark">
                     <tr>
                       <th className="th">Product</th>
                       <th className="th text-center w-28">Qty</th>
@@ -210,14 +210,14 @@ export default function BranchSalesPage() {
                       <th className="th w-10" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-dark">
                     {cart.map(item => {
                       const belowMin = parseFloat(item.selling_price) < item.min_selling_price;
                       return (
-                        <tr key={item.product_id} className={belowMin ? 'bg-red-50/40' : ''}>
+                        <tr key={item.product_id} className={belowMin ? 'bg-red-500/10/40' : ''}>
                           <td className="td">
-                            <p className="font-medium text-gray-900">{item.product_name}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">
+                            <p className="font-medium text-white">{item.product_name}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
                               Min: {fmt(item.min_selling_price)} · {item.available_qty} available
                             </p>
                           </td>
@@ -245,12 +245,12 @@ export default function BranchSalesPage() {
                               </p>
                             )}
                           </td>
-                          <td className="td text-right font-bold text-indigo-600">
+                          <td className="td text-right font-bold text-indigo-400">
                             {fmt((parseFloat(item.selling_price) || 0) * item.quantity)}
                           </td>
                           <td className="td">
                             <button onClick={() => removeItem(item.product_id)}
-                              className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors float-right">
+                              className="p-1.5 hover:bg-red-500/10 rounded-lg text-red-400 hover:text-red-600 transition-colors float-right">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </td>
@@ -266,17 +266,17 @@ export default function BranchSalesPage() {
           {/* ── Sale summary sidebar ── */}
           <div>
             <div className="card p-5 space-y-4 sticky top-6">
-              <h2 className="font-semibold text-gray-900">Sale Summary</h2>
+              <h2 className="font-semibold text-white">Sale Summary</h2>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-slate-400">
                   <span>Products</span><span>{cart.length}</span>
                 </div>
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-slate-400">
                   <span>Total Qty</span><span>{cart.reduce((s, c) => s + c.quantity, 0)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-gray-900 text-base pt-3 border-t border-gray-100">
+                <div className="flex justify-between font-bold text-white text-base pt-3 border-t border-white/8">
                   <span>Total</span>
-                  <span className="text-indigo-600">{fmt(cartTotal)}</span>
+                  <span className="text-indigo-400">{fmt(cartTotal)}</span>
                 </div>
               </div>
               <button
@@ -297,7 +297,7 @@ export default function BranchSalesPage() {
       {tab === 'history' && (
         <div className="card overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="thead-dark">
               <tr>
                 <th className="th">Product</th>
                 <th className="th text-right">Qty</th>
@@ -307,20 +307,20 @@ export default function BranchSalesPage() {
                 <th className="th">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-dark">
               {history.map((s: any, i: number) => (
-                <tr key={i} className="hover:bg-gray-50">
+                <tr key={i} className="hover:bg-white/5">
                   <td className="td font-medium">{s.product_name}</td>
                   <td className="td text-right">{s.quantity}</td>
-                  <td className="td text-right text-gray-500">{fmt(s.selling_price)}</td>
-                  <td className="td text-right font-medium text-indigo-600">{fmt(s.total_revenue)}</td>
-                  <td className="td text-right font-medium text-emerald-600">{fmt(s.profit)}</td>
-                  <td className="td text-gray-500 text-sm">{new Date(s.sold_at).toLocaleString()}</td>
+                  <td className="td text-right text-slate-400">{fmt(s.selling_price)}</td>
+                  <td className="td text-right font-medium text-indigo-400">{fmt(s.total_revenue)}</td>
+                  <td className="td text-right font-medium text-emerald-400">{fmt(s.profit)}</td>
+                  <td className="td text-slate-400 text-sm">{new Date(s.sold_at).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {history.length === 0 && <p className="text-center text-gray-400 py-10">No sales recorded yet</p>}
+          {history.length === 0 && <p className="text-center text-slate-500 py-10">No sales recorded yet</p>}
         </div>
       )}
     </div>

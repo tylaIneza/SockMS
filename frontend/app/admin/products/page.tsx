@@ -171,8 +171,8 @@ export default function ProductsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-          <p className="text-gray-500 text-sm mt-1">{products.length} products</p>
+          <h1 className="text-2xl font-bold text-white">Products</h1>
+          <p className="text-slate-400 text-sm mt-1">{products.length} products</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={openImportModal} className="btn-ghost">
@@ -186,15 +186,15 @@ export default function ProductsPage() {
 
       {/* Products table */}
       <div className="card overflow-hidden">
-        <div className="p-4 border-b border-gray-100">
+        <div className="p-4 border-b border-white/8">
           <div className="relative max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input className="input pl-9" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="thead-dark">
               <tr>
                 <th className="th">Product</th><th className="th">Category</th>
                 <th className="th text-right">Buy Price</th><th className="th text-right">Min Sell</th>
@@ -202,9 +202,9 @@ export default function ProductsPage() {
                 <th className="th"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-dark">
               {products.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={p.id} className="hover:bg-white/5 transition-colors">
                   <td className="td font-medium">{p.name}</td>
                   <td className="td"><span className="badge-blue">{p.category_name || '—'}</span></td>
                   <td className="td text-right">{fmt(p.buying_price)}</td>
@@ -215,28 +215,28 @@ export default function ProductsPage() {
                   </td>
                   <td className="td">
                     <div className="flex items-center gap-1 justify-end">
-                      <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600"><Pencil className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => del(p.id)}   className="p-1.5 rounded-lg hover:bg-red-50 text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400"><Pencil className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => del(p.id)}   className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {products.length === 0 && <p className="text-center text-gray-400 py-10">No products found</p>}
+          {products.length === 0 && <p className="text-center text-slate-500 py-10">No products found</p>}
         </div>
       </div>
 
       {/* Add / Edit modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+          <div className="modal-card rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="font-semibold text-gray-900">{editing ? 'Edit Product' : 'New Product'}</h2>
-              <button onClick={() => setModal(false)}><X className="w-5 h-5 text-gray-400" /></button>
+              <h2 className="font-semibold text-white">{editing ? 'Edit Product' : 'New Product'}</h2>
+              <button onClick={() => setModal(false)}><X className="w-5 h-5 text-slate-500" /></button>
             </div>
             <form onSubmit={save} className="p-6 space-y-4">
-              {error && <div className="bg-red-50 text-red-700 text-sm rounded-lg px-3 py-2">{error}</div>}
+              {error && <div className="alert-error text-sm rounded-lg px-3 py-2">{error}</div>}
               <div><label className="label">Name</label><input className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
               <div>
                 <label className="label">Category</label>
@@ -262,25 +262,25 @@ export default function ProductsPage() {
       {/* Import modal */}
       {importModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+          <div className="modal-card rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
               <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                <h2 className="font-semibold text-gray-900">Import Products from Excel</h2>
+                <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                <h2 className="font-semibold text-white">Import Products from Excel</h2>
               </div>
-              <button onClick={() => setImportModal(false)}><X className="w-5 h-5 text-gray-400" /></button>
+              <button onClick={() => setImportModal(false)}><X className="w-5 h-5 text-slate-500" /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
               {/* Template download */}
-              <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-100 rounded-xl px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-indigo-800">Need a template?</p>
                   <p className="text-xs text-indigo-500 mt-0.5">Download the Excel template with the correct column format</p>
                 </div>
-                <button onClick={downloadTemplate} className="btn-ghost text-indigo-600 border-indigo-200 hover:bg-indigo-100 shrink-0 ml-3">
+                <button onClick={downloadTemplate} className="btn-ghost text-indigo-400 border-indigo-200 hover:bg-indigo-500/15 shrink-0 ml-3">
                   <Download className="w-4 h-4" /> Template
                 </button>
               </div>
@@ -293,11 +293,11 @@ export default function ProductsPage() {
                   onDrop={async e => { e.preventDefault(); setDragOver(false); await handleFileInput(e.dataTransfer.files[0]); }}
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors
-                    ${dragOver ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'}`}
+                    ${dragOver ? 'border-indigo-400 bg-indigo-500/10' : 'border-gray-300 hover:border-indigo-400 hover:bg-white/5'}`}
                 >
                   <Upload className={`w-10 h-10 mx-auto mb-3 ${dragOver ? 'text-indigo-500' : 'text-gray-300'}`} />
-                  <p className="text-sm font-medium text-gray-700">Drop your Excel file here</p>
-                  <p className="text-xs text-gray-400 mt-1">or click to browse — .xlsx, .xls, .csv supported</p>
+                  <p className="text-sm font-medium text-slate-200">Drop your Excel file here</p>
+                  <p className="text-xs text-slate-500 mt-1">or click to browse — .xlsx, .xls, .csv supported</p>
                   <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
                     onChange={e => handleFileInput(e.target.files?.[0])} />
                 </div>
@@ -307,17 +307,17 @@ export default function ProductsPage() {
               {parsedRows.length > 0 && !importResult && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-sm font-medium text-gray-700">{parsedRows.length} rows found</span>
+                    <span className="text-sm font-medium text-slate-200">{parsedRows.length} rows found</span>
                     {validRows.length > 0   && <span className="badge-green">{validRows.length} valid</span>}
                     {invalidRows.length > 0 && <span className="badge-red">{invalidRows.length} with errors</span>}
-                    <button onClick={() => fileInputRef.current?.click()} className="text-xs text-indigo-600 hover:underline ml-auto">
+                    <button onClick={() => fileInputRef.current?.click()} className="text-xs text-indigo-400 hover:underline ml-auto">
                       Change file
                     </button>
                   </div>
 
-                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                  <div className="overflow-x-auto border border-white/10 rounded-xl">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 border-b border-gray-200">
+                      <thead className="thead-dark">
                         <tr>
                           <th className="th">#</th>
                           <th className="th">Name</th>
@@ -329,20 +329,20 @@ export default function ProductsPage() {
                           <th className="th">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-dark">
                         {parsedRows.map((row, i) => (
-                          <tr key={i} className={row._error ? 'bg-red-50/50' : ''}>
-                            <td className="td text-gray-400">{i + 1}</td>
+                          <tr key={i} className={row._error ? 'bg-red-500/10/50' : ''}>
+                            <td className="td text-slate-500">{i + 1}</td>
                             <td className="td font-medium">{row.name || <span className="text-red-400 italic">empty</span>}</td>
-                            <td className="td text-gray-500">{row.category || '—'}</td>
+                            <td className="td text-slate-400">{row.category || '—'}</td>
                             <td className="td text-right">{row.buying_price ? fmt(row.buying_price) : <span className="text-red-400">—</span>}</td>
                             <td className="td text-right">{row.min_selling_price ? fmt(row.min_selling_price) : <span className="text-red-400">—</span>}</td>
-                            <td className="td text-right font-semibold text-indigo-600">{parseInt(row.quantity) || 0}</td>
+                            <td className="td text-right font-semibold text-indigo-400">{parseInt(row.quantity) || 0}</td>
                             <td className="td text-right">{row.low_stock_alert || 10}</td>
                             <td className="td">
                               {row._error
                                 ? <span className="flex items-center gap-1 text-red-600 text-xs"><AlertCircle className="w-3 h-3" />{row._error}</span>
-                                : <span className="flex items-center gap-1 text-emerald-600 text-xs"><CheckCircle className="w-3 h-3" />Valid</span>
+                                : <span className="flex items-center gap-1 text-emerald-400 text-xs"><CheckCircle className="w-3 h-3" />Valid</span>
                               }
                             </td>
                           </tr>
@@ -356,18 +356,18 @@ export default function ProductsPage() {
               {/* Result */}
               {importResult && !importResult.error && (
                 <div className="space-y-4">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
+                  <div className="bg-emerald-500/10 border border-emerald-200 rounded-xl p-5 text-center">
                     <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
                     <p className="font-semibold text-emerald-800 text-lg">Import Complete</p>
                     <div className="flex justify-center gap-6 mt-3 text-sm">
-                      <div><p className="text-2xl font-bold text-emerald-700">{importResult.created}</p><p className="text-emerald-600">Created</p></div>
-                      <div><p className="text-2xl font-bold text-gray-500">{importResult.skipped}</p><p className="text-gray-500">Skipped (duplicates)</p></div>
+                      <div><p className="text-2xl font-bold text-emerald-700">{importResult.created}</p><p className="text-emerald-400">Created</p></div>
+                      <div><p className="text-2xl font-bold text-slate-400">{importResult.skipped}</p><p className="text-slate-400">Skipped (duplicates)</p></div>
                       {importResult.errors?.length > 0 && <div><p className="text-2xl font-bold text-red-600">{importResult.errors.length}</p><p className="text-red-500">Errors</p></div>}
                     </div>
                   </div>
                   {importResult.errors?.length > 0 && (
-                    <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                      <p className="text-sm font-medium text-red-700 mb-2">Rows with errors:</p>
+                    <div className="bg-red-500/10 border border-red-100 rounded-xl p-4">
+                      <p className="text-sm font-medium text-red-400 mb-2">Rows with errors:</p>
                       {importResult.errors.map((e: any, i: number) => (
                         <p key={i} className="text-xs text-red-600">• <strong>{e.name}</strong>: {e.reason}</p>
                       ))}
@@ -377,13 +377,13 @@ export default function ProductsPage() {
               )}
 
               {importResult?.error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">{importResult.error}</div>
+                <div className="bg-red-500/10 border border-red-200 rounded-xl p-4 text-red-400 text-sm">{importResult.error}</div>
               )}
             </div>
 
             {/* Footer */}
             <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between gap-3">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-500">
                 Required: <strong>Name, Buying Price, Min Selling Price</strong>. Optional: Category, Low Stock Alert, <strong>Quantity</strong> (stock sent to all branches).
               </p>
               <div className="flex gap-2 shrink-0">

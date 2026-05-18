@@ -6,14 +6,14 @@ const { auth } = require('../middleware/auth');
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
+    const { phone, password } = req.body;
+    if (!phone || !password) return res.status(400).json({ message: 'Phone number and password required' });
 
     const user = await one(
       `SELECT u.*, b.name AS branch_name FROM users u
        LEFT JOIN branches b ON b.id = u.branch_id
-       WHERE u.email = ? AND u.is_active = 1`,
-      [email],
+       WHERE u.phone = ? AND u.is_active = 1`,
+      [phone],
     );
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
@@ -21,7 +21,7 @@ router.post('/login', async (req, res) => {
     if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
 
     const payload = {
-      id: user.id, name: user.name, email: user.email,
+      id: user.id, name: user.name, phone: user.phone,
       role: user.role, branch_id: user.branch_id, branch_name: user.branch_name,
     };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -32,7 +32,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await one(
-      `SELECT u.id, u.name, u.email, u.role, u.branch_id, u.is_active,
+      `SELECT u.id, u.name, u.phone, u.role, u.branch_id, u.is_active,
               b.name AS branch_name, b.location AS branch_location
        FROM users u LEFT JOIN branches b ON b.id = u.branch_id
        WHERE u.id = ?`,
