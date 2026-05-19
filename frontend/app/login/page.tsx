@@ -348,7 +348,7 @@ export default function LoginPage() {
               <div className="grid grid-cols-3 gap-2">
                 {DEMO.map(({ role, phone, pw, color }) => (
                   <button key={phone} type="button"
-                    onClick={() => setForm({ phone, password: pw })}
+                    onClick={() => setForm({ name: '', phone, password: pw })}
                     className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border border-white/8 hover:border-white/20 transition-all duration-200 group"
                     style={{ background: 'rgba(255,255,255,0.03)' }}
                   >
