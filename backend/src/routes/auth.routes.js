@@ -1,9 +1,35 @@
 const router  = require('express').Router();
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
-const { one } = require('../config/db');
+const { v4: uuid } = require('uuid');
+const { one, run } = require('../config/db');
 const { auth } = require('../middleware/auth');
 const { audit } = require('../utils/audit');
+
+// One-time setup: only works when no super_admin exists yet
+router.post('/register', async (req, res) => {
+  try {
+    const existing = await one('SELECT id FROM users WHERE role = ?', ['super_admin']);
+    if (existing) return res.status(403).json({ message: 'Setup already complete. Super admin already exists.' });
+
+    const { name, phone, password } = req.body;
+    if (!name || !phone || !password) return res.status(400).json({ message: 'Name, phone and password are required' });
+    if (password.length < 4) return res.status(400).json({ message: 'Password must be at least 4 characters' });
+
+    const taken = await one('SELECT id FROM users WHERE phone = ?', [phone]);
+    if (taken) return res.status(409).json({ message: 'Phone number already registered' });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const id = uuid();
+    await run(
+      'INSERT INTO users (id, name, phone, password, role, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+      [id, name.trim(), phone.trim(), hashed, 'super_admin'],
+    );
+    const payload = { id, name: name.trim(), phone: phone.trim(), role: 'super_admin' };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+    res.status(201).json({ token, user: payload });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
 
 router.post('/login', async (req, res) => {
   try {

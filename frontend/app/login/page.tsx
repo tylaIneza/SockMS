@@ -34,7 +34,8 @@ function Orb({ className }: { className: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [form, setForm]       = useState({ phone: '', password: '' });
+  const [mode, setMode]       = useState<'login' | 'signup'>('login');
+  const [form, setForm]       = useState({ name: '', phone: '', password: '' });
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
   const [show, setShow]       = useState(false);
@@ -56,14 +57,24 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true); setError('');
     try {
-      const res = await api.post('/auth/login', { phone: form.phone, password: form.password });
+      const endpoint = mode === 'signup' ? '/auth/register' : '/auth/login';
+      const payload  = mode === 'signup'
+        ? { name: form.name, phone: form.phone, password: form.password }
+        : { phone: form.phone, password: form.password };
+      const res = await api.post(endpoint, payload);
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       const role = res.data.user.role;
       router.push(['super_admin', 'manager'].includes(role) ? '/admin' : '/branch');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid email or password.');
+      setError(err.response?.data?.message || 'Something went wrong.');
     } finally { setLoading(false); }
+  };
+
+  const switchMode = (m: 'login' | 'signup') => {
+    setMode(m);
+    setError('');
+    setForm({ name: '', phone: '', password: '' });
   };
 
   const inputStyle = {
@@ -226,8 +237,21 @@ export default function LoginPage() {
 
             {/* card header */}
             <div className="px-7 pt-7 pb-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              <h2 className="text-xl font-black text-white tracking-tight">Welcome back</h2>
-              <p className="text-slate-400 text-xs mt-1">Sign in to your workspace</p>
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xl font-black text-white tracking-tight">
+                  {mode === 'login' ? 'Welcome back' : 'Create account'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
+                  className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  {mode === 'login' ? 'Sign up →' : '← Sign in'}
+                </button>
+              </div>
+              <p className="text-slate-400 text-xs">
+                {mode === 'login' ? 'Sign in to your workspace' : 'Set up your super admin account'}
+              </p>
             </div>
 
             {/* form */}
@@ -240,6 +264,21 @@ export default function LoginPage() {
               )}
 
               <form onSubmit={submit} className="space-y-3.5">
+                {mode === 'signup' && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Full Name</label>
+                    <input
+                      type="text" value={form.name}
+                      onChange={e => setForm({ ...form, name: e.target.value })}
+                      placeholder="Your name"
+                      autoComplete="name" required
+                      className="w-full h-10 px-3.5 rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none"
+                      style={inputStyle}
+                      onFocus={e => Object.assign(e.target.style, { borderColor: 'rgba(99,102,241,0.7)', boxShadow: '0 0 0 3px rgba(99,102,241,0.15)' })}
+                      onBlur={e  => Object.assign(e.target.style, inputStyle)}
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Phone Number</label>
                   <input
@@ -289,8 +328,10 @@ export default function LoginPage() {
                     style={{ background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)' }} />
                   <span className="relative flex items-center justify-center gap-2">
                     {loading
-                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Signing in…</>
-                      : <>Sign in <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{mode === 'signup' ? 'Creating…' : 'Signing in…'}</>
+                      : mode === 'signup'
+                        ? <>Create account <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+                        : <>Sign in <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
                     }
                   </span>
                 </button>
