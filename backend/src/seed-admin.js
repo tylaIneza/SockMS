@@ -22,13 +22,18 @@ const PASSWORD = process.env.ADMIN_PASSWORD || 'uwayoben11';
       ['super_admin'],
     );
 
-    if (rows.length > 0) {
+    if (rows.length > 0 && !process.argv.includes('--reset')) {
       console.log('Super admin already exists:');
       rows.forEach(r => console.log(`  - ${r.name}  (${r.phone})`));
-      console.log('\nTo reset the password, run:');
-      console.log(`  ADMIN_PHONE=${rows[0].phone} ADMIN_PASSWORD=newpassword node src/seed-admin.js --reset`);
+      console.log('\nTo replace with new credentials, run:');
+      console.log(`  node src/seed-admin.js --reset`);
       await conn.end();
       return;
+    }
+
+    if (process.argv.includes('--reset')) {
+      await conn.execute('DELETE FROM users WHERE role = ?', ['super_admin']);
+      console.log('Old super admin removed.');
     }
 
     const hash = await bcrypt.hash(PASSWORD, 10);
