@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import {
   Eye, EyeOff, ShoppingBag, BarChart3, Package,
-  Users, TrendingUp, Shield, ArrowRight, Loader2,
+  TrendingUp, Shield, ArrowRight, Loader2,
   Star, Zap, Globe,
 } from 'lucide-react';
 
@@ -22,11 +22,6 @@ const STATS = [
   { value: '4.9★',  label: 'Rating',     icon: Star  },
 ];
 
-const DEMO = [
-  { role: 'Super Admin', phone: '0788628417', pw: 'GoPffd84Y', color: 'from-violet-500 to-indigo-500' },
-  { role: 'Branch A',    phone: '0780000002', pw: 'branch123', color: 'from-emerald-500 to-teal-500'  },
-  { role: 'Branch B',    phone: '0780000003', pw: 'branch123', color: 'from-orange-500 to-rose-500'   },
-];
 
 function Orb({ className }: { className: string }) {
   return <div className={`absolute rounded-full blur-3xl pointer-events-none ${className}`} />;
@@ -338,29 +333,6 @@ export default function LoginPage() {
               </form>
             </div>
 
-            {/* demo credentials */}
-            <div className="px-7 pb-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
-                <span className="text-slate-600 text-[10px] font-medium">Quick access</span>
-                <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {DEMO.map(({ role, phone, pw, color }) => (
-                  <button key={phone} type="button"
-                    onClick={() => setForm({ name: '', phone, password: pw })}
-                    className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border border-white/8 hover:border-white/20 transition-all duration-200 group"
-                    style={{ background: 'rgba(255,255,255,0.03)' }}
-                  >
-                    <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center shadow-md`}>
-                      <Users className="w-3 h-3 text-white" />
-                    </div>
-                    <span className="text-white text-[10px] font-semibold leading-none">{role}</span>
-                    <span className="text-slate-600 text-[9px] group-hover:text-slate-400 transition-colors">tap to fill</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <p className="text-center text-[10px] text-slate-700 mt-3">
