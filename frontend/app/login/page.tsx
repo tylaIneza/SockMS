@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import {
   Eye, EyeOff, ShoppingBag, BarChart3, Package,
-  TrendingUp, Shield, ArrowRight, Loader2,
+  Users, TrendingUp, Shield, ArrowRight, Loader2,
   Star, Zap, Globe,
 } from 'lucide-react';
 
