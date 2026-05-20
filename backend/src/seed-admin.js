@@ -4,8 +4,8 @@ const mysql  = require('mysql2/promise');
 const { v4: uuid } = require('uuid');
 
 const NAME     = process.env.ADMIN_NAME     || 'Super Admin';
-const PHONE    = process.env.ADMIN_PHONE    || '0780000000';
-const PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const PHONE    = process.env.ADMIN_PHONE    || '0786748801';
+const PASSWORD = process.env.ADMIN_PASSWORD || 'uwayoben11';
 
 (async () => {
   const conn = await mysql.createConnection({
