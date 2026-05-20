@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { v4: uuid } = require('uuid');
 const bcrypt = require('bcryptjs');
 const { many, one, run } = require('../config/db');
-const { auth, adminOnly } = require('../middleware/auth');
+const { auth, adminOnly, superAdminOnly } = require('../middleware/auth');
 const { audit } = require('../utils/audit');
 
 router.get('/', auth, adminOnly, async (req, res) => {
@@ -14,7 +14,7 @@ router.get('/', auth, adminOnly, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/', auth, adminOnly, async (req, res) => {
+router.post('/', auth, superAdminOnly, async (req, res) => {
   try {
     const { name, phone, password, role } = req.body;
     if (!name || !phone || !password || !role) return res.status(400).json({ message: 'Name, phone, password and role are required' });
@@ -30,7 +30,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
   }
 });
 
-router.put('/:id', auth, adminOnly, async (req, res) => {
+router.put('/:id', auth, superAdminOnly, async (req, res) => {
   try {
     const { name, phone, role, is_active, password } = req.body;
     if (password) {
@@ -49,7 +49,7 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
   }
 });
 
-router.delete('/:id', auth, adminOnly, async (req, res) => {
+router.delete('/:id', auth, superAdminOnly, async (req, res) => {
   try {
     if (req.params.id === req.user.id) return res.status(400).json({ message: 'Cannot deactivate yourself' });
     const target = await one('SELECT name FROM users WHERE id = ?', [req.params.id]);
@@ -59,7 +59,7 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.delete('/:id/permanent', auth, adminOnly, async (req, res) => {
+router.delete('/:id/permanent', auth, superAdminOnly, async (req, res) => {
   try {
     if (req.params.id === req.user.id) return res.status(400).json({ message: 'Cannot delete yourself' });
     const target = await one('SELECT name FROM users WHERE id = ?', [req.params.id]);

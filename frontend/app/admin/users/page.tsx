@@ -1,12 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Plus, Pencil, Trash2, X, Shield, User, AlertTriangle, Users, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Shield, User, AlertTriangle, Users, Search, Lock } from 'lucide-react';
 
 const BG     = '#07071a';
 const BORDER = 'rgba(255,255,255,0.08)';
 
 const EMPTY = { name: '', phone: '', password: '', role: 'branch_user' };
+
+function getMe() {
+  try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+}
 
 export default function UsersPage() {
   const [users, setUsers]       = useState<any[]>([]);
@@ -19,6 +23,7 @@ export default function UsersPage() {
   const [delModal, setDelModal] = useState<{ open: boolean; user: any }>({ open: false, user: null });
   const [delError, setDelError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const isSuperAdmin = getMe().role === 'super_admin';
 
   const load = () => api.get('/users').then(r => setUsers(r.data));
   useEffect(() => { load(); }, []);
@@ -95,7 +100,9 @@ export default function UsersPage() {
             {managerCount > 0 && <div className="badge-green  px-3 py-1.5 text-xs">{managerCount} manager{managerCount !== 1 ? 's' : ''}</div>}
             {userCount    > 0 && <div className="badge-blue   px-3 py-1.5 text-xs">{userCount} user{userCount !== 1 ? 's' : ''}</div>}
             {inactiveCount > 0 && <div className="badge-red   px-3 py-1.5 text-xs">{inactiveCount} inactive</div>}
-            <button onClick={openNew} className="btn-primary"><Plus className="w-4 h-4" /> Add User</button>
+            {isSuperAdmin && (
+              <button onClick={openNew} className="btn-primary"><Plus className="w-4 h-4" /> Add User</button>
+            )}
           </div>
         </div>
       </div>
@@ -150,14 +157,23 @@ export default function UsersPage() {
                     </td>
                     <td className="td">
                       <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => openEdit(u)}
-                          className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 transition-colors">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => { setDelModal({ open: true, user: u }); setDelError(''); }}
-                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {isSuperAdmin ? (
+                          <>
+                            <button onClick={() => openEdit(u)}
+                              className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 transition-colors">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => { setDelModal({ open: true, user: u }); setDelError(''); }}
+                              className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg"
+                            style={{ color: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.03)' }}>
+                            <Lock className="w-3 h-3" /> View only
+                          </span>
+                        )}
                       </div>
                     </td>
                   </tr>

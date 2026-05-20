@@ -21,6 +21,13 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
+const superAdminOnly = (req, res, next) => {
+  if (req.user?.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Super admin access required' });
+  }
+  next();
+};
+
 const managerOrAdmin = (req, res, next) => {
   if (!['super_admin', 'manager'].includes(req.user?.role)) {
     return res.status(403).json({ message: 'Manager or admin access required' });
@@ -39,4 +46,4 @@ const branchGuard = (req, res, next) => {
   next();
 };
 
-module.exports = { auth, adminOnly, managerOrAdmin, branchGuard };
+module.exports = { auth, adminOnly, superAdminOnly, managerOrAdmin, branchGuard };
